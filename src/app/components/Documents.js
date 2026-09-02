@@ -2,119 +2,98 @@
 
 import { useEffect, useRef, useState } from "react";
 
+const normalizeName = (name = "") =>
+  name.trim().toLowerCase();
+
+const getDocumentType = (name = "") =>
+  name.split(".").pop()?.toUpperCase() || "FILE";
+
+const formatDate = (date) => {
+  if (!date) return "Unknown";
+
+  return new Date(date).toLocaleDateString(
+    "en-US",
+    {
+      month: "short",
+      day: "2-digit",
+      year: "numeric",
+    }
+  );
+};
+
+const removeDuplicates = (documentList = []) => {
+  const seen = new Set();
+
+  return documentList.filter((document) => {
+    const key = normalizeName(document.name);
+
+    if (seen.has(key)) return false;
+
+    seen.add(key);
+    return true;
+  });
+};
+
+const mapSupabaseDocument = (document) => ({
+  id: document.id,
+  name: document.name,
+  type: getDocumentType(document.name),
+  date: formatDate(document.created_at),
+  status: "Ready",
+  text: document.content || "",
+});
+
 export default function Documents() {
   const fileInputRef = useRef(null);
 
   const [documents, setDocuments] = useState([]);
   const [search, setSearch] = useState("");
   const [selectedDocument, setSelectedDocument] = useState(null);
+  const [deletingDocumentId, setDeletingDocumentId] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  // Normalize document names for duplicate checking
-  function normalizeName(name = "") {
-    return name.trim().toLowerCase();
-  }
-
-  // Remove duplicate documents by name
-  function removeDuplicates(documentList = []) {
-    const seen = new Set();
-
-    return documentList.filter((document) => {
-      const key = normalizeName(document.name);
-
-      if (seen.has(key)) {
-        return false;
-      }
-
-      seen.add(key);
-      return true;
-    });
-  }
-
-  // Load documents from localStorage
   useEffect(() => {
-    const savedDocuments = localStorage.getItem("aveniq-documents");
+    let active = true;
 
-    if (savedDocuments) {
-      try {
-        const parsedDocuments = JSON.parse(savedDocuments);
+    fetch("/api/documents", {
+      method: "GET",
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        if (!active) return;
 
-        const uniqueDocuments = removeDuplicates(parsedDocuments);
+        if (data?.error) {
+          throw new Error(data.error);
+        }
 
-        setDocuments(uniqueDocuments);
-
-        localStorage.setItem(
-          "aveniq-documents",
-          JSON.stringify(uniqueDocuments)
+        setDocuments(
+          removeDuplicates(
+            (data?.documents || []).map(
+              mapSupabaseDocument
+            )
+          )
+        );
+      })
+      .catch((error) => {
+        console.error(
+          "DOCUMENT LOAD ERROR:",
+          error
         );
 
-        window.dispatchEvent(
-          new Event("aveniq-documents-updated")
-        );
-      } catch (error) {
-        console.error("DOCUMENT STORAGE ERROR:", error);
-        setDocuments([]);
-      }
-    } else {
-      const defaultDocuments = [
-        {
-          id: "doc-1",
-          name: "Property Report",
-          type: "PDF",
-          date: "Sep 01, 2026",
-          status: "Ready",
-          fileUrl: null,
-          text: "",
-        },
-        {
-          id: "doc-2",
-          name: "Market Analysis",
-          type: "PDF",
-          date: "Sep 01, 2026",
-          status: "Processing",
-          fileUrl: null,
-          text: "",
-        },
-        {
-          id: "doc-3",
-          name: "Investment Strategy",
-          type: "DOCX",
-          date: "Aug 30, 2026",
-          status: "Ready",
-          fileUrl: null,
-          text: "",
-        },
-      ];
+        if (active) {
+          setDocuments([]);
+        }
+      })
+      .finally(() => {
+        if (active) {
+          setLoading(false);
+        }
+      });
 
-      setDocuments(defaultDocuments);
-
-      localStorage.setItem(
-        "aveniq-documents",
-        JSON.stringify(defaultDocuments)
-      );
-    }
+    return () => {
+      active = false;
+    };
   }, []);
-
-  // Keep localStorage synchronized
-  useEffect(() => {
-    if (documents.length > 0) {
-      const uniqueDocuments = removeDuplicates(documents);
-
-      // Only update if duplicates were actually found
-      if (uniqueDocuments.length !== documents.length) {
-        setDocuments(uniqueDocuments);
-        return;
-      }
-
-      localStorage.setItem(
-        "aveniq-documents",
-        JSON.stringify(documents)
-      );
-
-      window.dispatchEvent(
-        new Event("aveniq-documents-updated")
-      );
-    }
-  }, [documents]);
 
   async function handleUpload(event) {
     const files = Array.from(event.target.files || []);
@@ -125,58 +104,33 @@ export default function Documents() {
       const extension =
         file.name.split(".").pop()?.toUpperCase() || "FILE";
 
-      const documentName = file.name.replace(/\.[^/.]+$/, "");
-
-      const normalizedDocumentName =
-        normalizeName(documentName);
-
-      // Check current documents before upload
       const alreadyExists = documents.some(
         (document) =>
           normalizeName(document.name) ===
-          normalizedDocumentName
+          normalizeName(file.name)
       );
 
-      if (alreadyExists) {
-        console.log(
-          `Document already exists: ${documentName}`
-        );
-        continue;
-      }
+      if (alreadyExists) continue;
 
-      const documentId = crypto.randomUUID();
+      const temporaryDocumentId = crypto.randomUUID();
 
       const newDocument = {
-        id: documentId,
-        name: documentName,
+        id: temporaryDocumentId,
+        name: file.name,
         type: extension,
-        date: new Date().toLocaleDateString("en-US", {
-          month: "short",
-          day: "2-digit",
-          year: "numeric",
-        }),
+        date: formatDate(new Date()),
         status: "Processing",
-        fileUrl: URL.createObjectURL(file),
         text: "",
       };
 
-      // Add document while protecting against duplicates
-      setDocuments((current) => {
-        const exists = current.some(
-          (document) =>
-            normalizeName(document.name) ===
-            normalizedDocumentName
-        );
-
-        if (exists) {
-          return current;
-        }
-
-        return [newDocument, ...current];
-      });
+      setDocuments((current) => [
+        newDocument,
+        ...current,
+      ]);
 
       try {
         const formData = new FormData();
+
         formData.append("file", file);
 
         const response = await fetch("/api/documents", {
@@ -204,59 +158,101 @@ export default function Documents() {
           );
         }
 
+        if (!data?.document?.id) {
+          throw new Error(
+            "Document was uploaded but no database ID was returned."
+          );
+        }
+
+        const uploadedDocument = {
+          id: data.document.id,
+          name: data.document.name || file.name,
+          type: data.document.type || extension,
+          date: formatDate(new Date()),
+          status: "Ready",
+          text: data.text || "",
+        };
+
         setDocuments((current) =>
           removeDuplicates(
             current.map((document) =>
-              document.id === documentId
-                ? {
-                    ...document,
-                    status: "Ready",
-                    text: data.text || "",
-                  }
+              document.id === temporaryDocumentId
+                ? uploadedDocument
                 : document
             )
           )
         );
       } catch (error) {
-        console.error(
-          "DOCUMENT UPLOAD ERROR:",
-          error
-        );
+        console.error("DOCUMENT UPLOAD ERROR:", error);
 
         setDocuments((current) =>
-          removeDuplicates(
-            current.map((document) =>
-              document.id === documentId
-                ? {
-                    ...document,
-                    status: "Failed",
-                  }
-                : document
-            )
+          current.map((document) =>
+            document.id === temporaryDocumentId
+              ? {
+                  ...document,
+                  status: "Failed",
+                }
+              : document
           )
         );
       }
     }
 
-    // Reset file input
     event.target.value = "";
   }
 
-  function deleteDocument(documentId) {
+  async function deleteDocument(documentId) {
     const document = documents.find(
       (item) => item.id === documentId
     );
 
-    if (document?.fileUrl) {
-      URL.revokeObjectURL(document.fileUrl);
-    }
+    if (!document || deletingDocumentId) return;
 
-    setDocuments((current) =>
-      current.filter((item) => item.id !== documentId)
+    const confirmed = window.confirm(
+      `Are you sure you want to delete "${document.name}"?`
     );
 
-    if (selectedDocument?.id === documentId) {
-      setSelectedDocument(null);
+    if (!confirmed) return;
+
+    setDeletingDocumentId(documentId);
+
+    try {
+      const response = await fetch("/api/documents", {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          documentId,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(
+          data.error || "Failed to delete document."
+        );
+      }
+
+      setDocuments((current) =>
+        current.filter(
+          (item) => item.id !== documentId
+        )
+      );
+
+      if (selectedDocument?.id === documentId) {
+        setSelectedDocument(null);
+      }
+    } catch (error) {
+      console.error("DOCUMENT DELETE ERROR:", error);
+
+      alert(
+        error?.message ||
+          "Failed to delete document. Please try again."
+      );
+    } finally {
+      setDeletingDocumentId(null);
     }
   }
 
@@ -266,18 +262,6 @@ export default function Documents() {
     setSelectedDocument(document);
   }
 
-  function closeDocument() {
-    setSelectedDocument(null);
-  }
-
-  /*
-    IMPORTANT:
-    We remove duplicates AGAIN before filtering/searching.
-
-    This guarantees that even if localStorage/state somehow
-    contains duplicate documents, the UI will only render
-    one copy.
-  */
   const uniqueDocuments = removeDuplicates(documents);
 
   const normalizedSearch = normalizeName(search);
@@ -301,18 +285,19 @@ export default function Documents() {
     (document) => document.status === "Failed"
   ).length;
 
-  const isPdf =
-    selectedDocument?.type === "PDF" &&
-    selectedDocument?.fileUrl;
-
   return (
     <div className="flex min-h-0 flex-1 flex-col bg-[#F8FAFC]">
-      {/* HEADER */}
       <header className="flex min-h-16 items-center justify-between border-b border-[#E2E8F0] bg-white px-6">
         <div>
-          <h2 className="text-sm font-semibold text-[#0F172A]">
-            Documents
-          </h2>
+          <div className="flex items-center gap-2">
+            <h2 className="text-sm font-semibold tracking-[-0.01em] text-[#0F172A]">
+              Documents
+            </h2>
+
+            <span className="rounded-full bg-[#EFF6FF] px-2 py-0.5 text-[10px] font-medium text-[#2563EB]">
+              Knowledge Base
+            </span>
+          </div>
 
           <p className="mt-1 text-xs text-[#64748B]">
             Manage your real estate knowledge sources
@@ -323,7 +308,7 @@ export default function Documents() {
           <input
             ref={fileInputRef}
             type="file"
-            accept=".pdf,.doc,.docx,.txt"
+            accept=".docx,.txt"
             multiple
             onChange={handleUpload}
             className="hidden"
@@ -334,188 +319,359 @@ export default function Documents() {
             onClick={() =>
               fileInputRef.current?.click()
             }
-            className="rounded-lg bg-[#2563EB] px-4 py-2.5 text-sm font-medium text-white transition hover:bg-[#1D4ED8]"
+            className="group flex items-center gap-2 rounded-lg bg-[#2563EB] px-4 py-2.5 text-xs font-medium text-white shadow-sm transition-all duration-200 hover:bg-[#1D4ED8] hover:shadow-md active:scale-[0.98]"
           >
+            <svg
+              viewBox="0 0 20 20"
+              fill="none"
+              className="h-4 w-4"
+            >
+              <path
+                d="M10 13V4m0 0L6.5 7.5M10 4l3.5 3.5M4 11.5v2A2.5 2.5 0 0 0 6.5 16h7a2.5 2.5 0 0 0 2.5-2.5v-2"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+
             Upload Document
           </button>
         </div>
       </header>
 
-      {/* MAIN CONTENT */}
       <div className="flex-1 overflow-y-auto p-6">
-        <div className="mx-auto max-w-5xl">
+        <div className="mx-auto max-w-6xl">
+          <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <div className="group rounded-2xl border border-[#E2E8F0] bg-white p-5 shadow-[0_1px_2px_rgba(15,23,42,0.02)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
+              <div className="flex items-center justify-between">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#64748B]">
+                  Total Documents
+                </p>
 
-          {/* STATS */}
-          <div className="mb-6 grid grid-cols-3 gap-4">
-            <div className="rounded-xl border border-[#E2E8F0] bg-white p-5">
-              <p className="text-xs font-medium uppercase tracking-[0.1em] text-[#64748B]">
-                Total Documents
-              </p>
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#F8FAFC] text-[#64748B] transition-colors group-hover:bg-[#EFF6FF] group-hover:text-[#2563EB]">
+                  <svg
+                    viewBox="0 0 20 20"
+                    fill="none"
+                    className="h-4 w-4"
+                  >
+                    <path
+                      d="M5 3.5h7l3 3v10H5v-13Z"
+                      stroke="currentColor"
+                      strokeWidth="1.4"
+                      strokeLinejoin="round"
+                    />
+                    <path
+                      d="M12 3.5v3h3M8 10h4M8 13h4"
+                      stroke="currentColor"
+                      strokeWidth="1.4"
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                </div>
+              </div>
 
-              <p className="mt-2 text-2xl font-semibold text-[#0F172A]">
+              <p className="mt-3 text-2xl font-semibold tracking-tight text-[#0F172A]">
                 {uniqueDocuments.length}
               </p>
+
+              <p className="mt-1 text-[11px] text-[#94A3B8]">
+                Knowledge sources
+              </p>
             </div>
 
-            <div className="rounded-xl border border-[#E2E8F0] bg-white p-5">
-              <p className="text-xs font-medium uppercase tracking-[0.1em] text-[#64748B]">
-                Ready
-              </p>
+            <div className="group rounded-2xl border border-[#E2E8F0] bg-white p-5 shadow-[0_1px_2px_rgba(15,23,42,0.02)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
+              <div className="flex items-center justify-between">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#64748B]">
+                  Ready
+                </p>
 
-              <p className="mt-2 text-2xl font-semibold text-[#2563EB]">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#EFF6FF] text-[#2563EB]">
+                  <span className="h-2 w-2 rounded-full bg-[#2563EB]" />
+                </div>
+              </div>
+
+              <p className="mt-3 text-2xl font-semibold tracking-tight text-[#0F172A]">
                 {readyCount}
               </p>
+
+              <p className="mt-1 text-[11px] text-[#94A3B8]">
+                Available to AVENIQ AI
+              </p>
             </div>
 
-            <div className="rounded-xl border border-[#E2E8F0] bg-white p-5">
-              <p className="text-xs font-medium uppercase tracking-[0.1em] text-[#64748B]">
-                Processing
-              </p>
+            <div className="group rounded-2xl border border-[#E2E8F0] bg-white p-5 shadow-[0_1px_2px_rgba(15,23,42,0.02)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
+              <div className="flex items-center justify-between">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#64748B]">
+                  Processing
+                </p>
 
-              <p className="mt-2 text-2xl font-semibold text-[#0F172A]">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#F8FAFC] text-[#64748B]">
+                  <svg
+                    viewBox="0 0 20 20"
+                    fill="none"
+                    className="h-4 w-4"
+                  >
+                    <circle
+                      cx="10"
+                      cy="10"
+                      r="6.5"
+                      stroke="currentColor"
+                      strokeWidth="1.4"
+                    />
+                    <path
+                      d="M10 6.5v3.8l2.5 1.5"
+                      stroke="currentColor"
+                      strokeWidth="1.4"
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                </div>
+              </div>
+
+              <p className="mt-3 text-2xl font-semibold tracking-tight text-[#0F172A]">
                 {processingCount}
               </p>
 
-              {failedCount > 0 && (
-                <p className="mt-1 text-xs text-red-500">
-                  {failedCount} failed
-                </p>
-              )}
+              <p className="mt-1 text-[11px] text-[#94A3B8]">
+                {failedCount > 0
+                  ? `${failedCount} failed`
+                  : "Currently processing"}
+              </p>
             </div>
           </div>
 
-          {/* SEARCH */}
           <div className="mb-5">
-            <input
-              type="text"
-              value={search}
-              onChange={(e) =>
-                setSearch(e.target.value)
-              }
-              placeholder="Search documents..."
-              className="w-full rounded-xl border border-[#E2E8F0] bg-white px-4 py-3 text-sm text-[#111827] outline-none transition placeholder:text-[#94A3B8] focus:border-[#2563EB] focus:ring-4 focus:ring-[#2563EB]/10"
-            />
+            <div className="relative">
+              <svg
+                viewBox="0 0 20 20"
+                fill="none"
+                className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#94A3B8]"
+              >
+                <circle
+                  cx="8.5"
+                  cy="8.5"
+                  r="5"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                />
+                <path
+                  d="m12.5 12.5 4 4"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                />
+              </svg>
+
+              <input
+                type="text"
+                value={search}
+                onChange={(event) =>
+                  setSearch(event.target.value)
+                }
+                placeholder="Search documents..."
+                className="w-full rounded-xl border border-[#E2E8F0] bg-white py-3 pl-11 pr-4 text-sm text-[#0F172A] shadow-[0_1px_2px_rgba(15,23,42,0.02)] outline-none transition-all duration-200 placeholder:text-[#94A3B8] focus:border-[#93C5FD] focus:ring-4 focus:ring-[#2563EB]/10"
+              />
+            </div>
           </div>
 
-          {/* DOCUMENT TABLE */}
-          <div className="overflow-hidden rounded-xl border border-[#E2E8F0] bg-white">
-
-            {/* TABLE HEADER */}
-            <div className="grid grid-cols-[1fr_100px_150px_120px_130px] border-b border-[#E2E8F0] bg-[#F8FAFC] px-5 py-3">
-              <p className="text-xs font-medium uppercase tracking-[0.08em] text-[#64748B]">
+          <div className="overflow-hidden rounded-2xl border border-[#E2E8F0] bg-white shadow-[0_1px_2px_rgba(15,23,42,0.02)]">
+            <div className="hidden grid-cols-[minmax(0,1fr)_90px_130px_110px_130px] border-b border-[#E2E8F0] bg-[#F8FAFC] px-5 py-3.5 md:grid">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#64748B]">
                 Document
               </p>
 
-              <p className="text-xs font-medium uppercase tracking-[0.08em] text-[#64748B]">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#64748B]">
                 Type
               </p>
 
-              <p className="text-xs font-medium uppercase tracking-[0.08em] text-[#64748B]">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#64748B]">
                 Added
               </p>
 
-              <p className="text-xs font-medium uppercase tracking-[0.08em] text-[#64748B]">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#64748B]">
                 Status
               </p>
 
-              <p className="text-xs font-medium uppercase tracking-[0.08em] text-[#64748B]">
-                Action
+              <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#64748B]">
+                Actions
               </p>
             </div>
 
-            {/* EMPTY STATE */}
-            {filteredDocuments.length === 0 ? (
-              <div className="px-5 py-12 text-center">
-                <p className="text-sm font-medium text-[#0F172A]">
-                  No documents found
+            {loading ? (
+              <div className="space-y-0">
+                {[1, 2, 3].map((item) => (
+                  <div
+                    key={item}
+                    className="flex items-center gap-4 border-b border-[#E2E8F0] px-5 py-5 last:border-0"
+                  >
+                    <div className="h-9 w-9 animate-pulse rounded-lg bg-[#E2E8F0]" />
+
+                    <div className="flex-1 space-y-2">
+                      <div className="h-3 w-48 animate-pulse rounded bg-[#E2E8F0]" />
+                      <div className="h-2.5 w-28 animate-pulse rounded bg-[#F1F5F9]" />
+                    </div>
+
+                    <div className="hidden h-3 w-12 animate-pulse rounded bg-[#F1F5F9] md:block" />
+                    <div className="hidden h-3 w-20 animate-pulse rounded bg-[#F1F5F9] md:block" />
+                  </div>
+                ))}
+              </div>
+            ) : filteredDocuments.length === 0 ? (
+              <div className="px-6 py-16 text-center">
+                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-[#F8FAFC] text-[#94A3B8]">
+                  <svg
+                    viewBox="0 0 20 20"
+                    fill="none"
+                    className="h-5 w-5"
+                  >
+                    <path
+                      d="M5 3.5h7l3 3v10H5v-13Z"
+                      stroke="currentColor"
+                      strokeWidth="1.4"
+                      strokeLinejoin="round"
+                    />
+                    <path
+                      d="M12 3.5v3h3"
+                      stroke="currentColor"
+                      strokeWidth="1.4"
+                    />
+                  </svg>
+                </div>
+
+                <p className="mt-4 text-sm font-medium text-[#0F172A]">
+                  {search
+                    ? "No documents found"
+                    : "No documents yet"}
                 </p>
 
-                <p className="mt-1 text-xs text-[#64748B]">
-                  Try another search or upload a document.
+                <p className="mx-auto mt-1 max-w-sm text-xs leading-5 text-[#64748B]">
+                  {search
+                    ? "Try a different search term."
+                    : "Upload your first knowledge source to start building your AVENIQ knowledge base."}
                 </p>
+
+                {!search && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      fileInputRef.current?.click()
+                    }
+                    className="mt-5 rounded-lg border border-[#DBEAFE] bg-[#EFF6FF] px-4 py-2 text-xs font-medium text-[#2563EB] transition-all duration-200 hover:border-[#BFDBFE] hover:bg-[#DBEAFE]"
+                  >
+                    Upload your first document
+                  </button>
+                )}
               </div>
             ) : (
-              /* DOCUMENT ROWS */
               filteredDocuments.map((document) => (
                 <div
                   key={document.id}
-                  className="grid grid-cols-[1fr_100px_150px_120px_130px] items-center border-b border-[#E2E8F0] px-5 py-4 last:border-b-0"
+                  className="group border-b border-[#E2E8F0] px-5 py-4 transition-colors duration-200 last:border-0 hover:bg-[#FAFCFF]"
                 >
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium text-[#0F172A]">
-                      {document.name}
+                  <div className="grid items-center gap-4 md:grid-cols-[minmax(0,1fr)_90px_130px_110px_130px]">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[#DBEAFE] bg-[#EFF6FF] text-[9px] font-bold tracking-wide text-[#2563EB]">
+                        {document.type}
+                      </div>
+
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium text-[#0F172A]">
+                          {document.name}
+                        </p>
+
+                        <p className="mt-1 text-[10px] text-[#94A3B8] md:hidden">
+                          {document.date}
+                        </p>
+                      </div>
+                    </div>
+
+                    <p className="hidden text-xs font-medium text-[#64748B] md:block">
+                      {document.type}
                     </p>
-                  </div>
 
-                  <p className="text-xs font-medium text-[#64748B]">
-                    {document.type}
-                  </p>
+                    <p className="hidden text-xs text-[#64748B] md:block">
+                      {document.date}
+                    </p>
 
-                  <p className="text-xs text-[#64748B]">
-                    {document.date}
-                  </p>
-
-                  <div>
-                    <span
-                      className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-medium ${
-                        document.status === "Ready"
-                          ? "bg-[#EFF6FF] text-[#2563EB]"
-                          : document.status === "Failed"
+                    <div>
+                      <span
+                        className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-medium ${
+                          document.status === "Ready"
+                            ? "bg-[#EFF6FF] text-[#2563EB]"
+                            : document.status === "Failed"
                             ? "bg-red-50 text-red-600"
                             : "bg-[#F1F5F9] text-[#64748B]"
-                      }`}
-                    >
-                      {document.status}
-                    </span>
-                  </div>
+                        }`}
+                      >
+                        <span
+                          className={`h-1.5 w-1.5 rounded-full ${
+                            document.status === "Ready"
+                              ? "bg-[#2563EB]"
+                              : document.status ===
+                                "Failed"
+                              ? "bg-red-500"
+                              : "animate-pulse bg-[#94A3B8]"
+                          }`}
+                        />
 
-                  <div className="flex items-center gap-3">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        viewDocument(document)
-                      }
-                      disabled={
-                        document.status !== "Ready"
-                      }
-                      className="text-xs font-medium text-[#2563EB] transition hover:text-[#1D4ED8] disabled:cursor-not-allowed disabled:text-[#CBD5E1]"
-                    >
-                      View
-                    </button>
+                        {document.status}
+                      </span>
+                    </div>
 
-                    <button
-                      type="button"
-                      onClick={() =>
-                        deleteDocument(document.id)
-                      }
-                      className="text-xs font-medium text-[#94A3B8] transition hover:text-red-500"
-                    >
-                      Delete
-                    </button>
+                    <div className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          viewDocument(document)
+                        }
+                        disabled={
+                          document.status !== "Ready"
+                        }
+                        className="rounded-md px-2 py-1 text-xs font-medium text-[#2563EB] transition-colors duration-200 hover:bg-[#EFF6FF] disabled:cursor-not-allowed disabled:text-[#CBD5E1] disabled:hover:bg-transparent"
+                      >
+                        View
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          deleteDocument(document.id)
+                        }
+                        disabled={
+                          deletingDocumentId !== null
+                        }
+                        className="rounded-md px-2 py-1 text-xs font-medium text-[#94A3B8] transition-colors duration-200 hover:bg-red-50 hover:text-red-500 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {deletingDocumentId ===
+                        document.id
+                          ? "Deleting..."
+                          : "Delete"}
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))
             )}
           </div>
 
-          {/* ADD KNOWLEDGE */}
-          <div className="mt-5 rounded-xl border border-dashed border-[#CBD5E1] bg-white px-6 py-8 text-center">
-            <p className="text-sm font-medium text-[#0F172A]">
-              Add knowledge to AVENIQ
-            </p>
+          <div className="mt-5 flex flex-col items-center justify-between gap-4 rounded-2xl border border-dashed border-[#CBD5E1] bg-white px-6 py-6 sm:flex-row">
+            <div>
+              <p className="text-sm font-medium text-[#0F172A]">
+                Add knowledge to AVENIQ
+              </p>
 
-            <p className="mx-auto mt-1 max-w-md text-xs leading-5 text-[#64748B]">
-              Upload property reports, market research,
-              investment documents, and other real estate
-              files to build your knowledge base.
-            </p>
+              <p className="mt-1 text-xs leading-5 text-[#64748B]">
+                Upload DOCX or TXT files to expand your AI knowledge base.
+              </p>
+            </div>
 
             <button
               type="button"
               onClick={() =>
                 fileInputRef.current?.click()
               }
-              className="mt-4 rounded-lg border border-[#E2E8F0] bg-white px-4 py-2 text-xs font-medium text-[#2563EB] transition hover:border-[#93C5FD] hover:bg-[#EFF6FF]"
+              className="shrink-0 rounded-lg border border-[#E2E8F0] bg-white px-4 py-2 text-xs font-medium text-[#2563EB] shadow-sm transition-all duration-200 hover:border-[#BFDBFE] hover:bg-[#EFF6FF]"
             >
               Choose Files
             </button>
@@ -523,139 +679,121 @@ export default function Documents() {
         </div>
       </div>
 
-      {/* DOCUMENT VIEW MODAL */}
       {selectedDocument && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0F172A]/50 p-6">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-[#0F172A]/40 p-4 backdrop-blur-[2px] sm:p-6"
+          onClick={() => setSelectedDocument(null)}
+        >
           <div
-            className={`flex max-h-[90vh] w-full flex-col overflow-hidden rounded-2xl border border-[#E2E8F0] bg-white shadow-2xl ${
-              isPdf ? "max-w-5xl" : "max-w-lg"
-            }`}
+            className="flex max-h-[88vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-[#E2E8F0] bg-white shadow-2xl"
+            onClick={(event) =>
+              event.stopPropagation()
+            }
           >
+            <div className="flex items-center justify-between border-b border-[#E2E8F0] px-5 py-4">
+              <div className="flex min-w-0 items-center gap-3">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[#DBEAFE] bg-[#EFF6FF] text-[9px] font-bold text-[#2563EB]">
+                  {selectedDocument.type}
+                </div>
 
-            {/* MODAL HEADER */}
-            <div className="flex shrink-0 items-center justify-between border-b border-[#E2E8F0] px-6 py-4">
-              <div className="min-w-0">
-                <p className="truncate text-sm font-semibold text-[#0F172A]">
-                  {selectedDocument.name}
-                </p>
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold text-[#0F172A]">
+                    {selectedDocument.name}
+                  </p>
 
-                <p className="mt-1 text-xs text-[#64748B]">
-                  {selectedDocument.type} ·{" "}
-                  {selectedDocument.status}
-                </p>
+                  <p className="mt-1 text-[10px] text-[#94A3B8]">
+                    {selectedDocument.type} ·{" "}
+                    {selectedDocument.date}
+                  </p>
+                </div>
               </div>
 
               <button
                 type="button"
-                onClick={closeDocument}
-                className="ml-4 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-lg text-[#64748B] transition hover:bg-[#F8FAFC] hover:text-[#0F172A]"
+                onClick={() =>
+                  setSelectedDocument(null)
+                }
+                className="ml-4 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[#94A3B8] transition-colors hover:bg-[#F8FAFC] hover:text-[#0F172A]"
                 aria-label="Close"
               >
-                ×
+                <svg
+                  viewBox="0 0 20 20"
+                  fill="none"
+                  className="h-4 w-4"
+                >
+                  <path
+                    d="m5 5 10 10M15 5 5 15"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                  />
+                </svg>
               </button>
             </div>
 
-            {/* PDF */}
-            {isPdf ? (
-              <div className="min-h-0 flex-1 bg-[#F1F5F9] p-4">
-                <iframe
-                  src={selectedDocument.fileUrl}
-                  title={selectedDocument.name}
-                  className="h-[70vh] w-full rounded-lg border border-[#E2E8F0] bg-white"
-                />
-              </div>
-            ) : (
-              /* OTHER DOCUMENTS */
-              <div className="space-y-5 overflow-y-auto px-6 py-6">
-
+            <div className="overflow-y-auto px-5 py-5">
+              <div className="mb-5 flex items-center justify-between rounded-xl border border-[#DBEAFE] bg-[#F8FBFF] px-4 py-3">
                 <div>
-                  <p className="text-xs font-medium uppercase tracking-[0.08em] text-[#64748B]">
-                    Document
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#64748B]">
+                    Knowledge Status
                   </p>
 
-                  <p className="mt-1 text-sm font-medium text-[#0F172A]">
-                    {selectedDocument.name}
+                  <p className="mt-1 text-xs text-[#475569]">
+                    This document is available to AVENIQ AI.
                   </p>
                 </div>
 
-                <div className="grid grid-cols-3 gap-4">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-[#EFF6FF] px-2.5 py-1 text-[10px] font-medium text-[#2563EB]">
+                  <span className="h-1.5 w-1.5 rounded-full bg-[#2563EB]" />
+                  Ready
+                </span>
+              </div>
 
-                  <div>
-                    <p className="text-xs text-[#64748B]">
-                      Type
-                    </p>
-
-                    <p className="mt-1 text-sm font-medium text-[#0F172A]">
-                      {selectedDocument.type}
-                    </p>
-                  </div>
-
-                  <div>
-                    <p className="text-xs text-[#64748B]">
-                      Added
-                    </p>
-
-                    <p className="mt-1 text-sm font-medium text-[#0F172A]">
-                      {selectedDocument.date}
-                    </p>
-                  </div>
-
-                  <div>
-                    <p className="text-xs text-[#64748B]">
-                      Status
-                    </p>
-
-                    <p className="mt-1 text-sm font-medium text-[#2563EB]">
-                      {selectedDocument.status}
-                    </p>
-                  </div>
-
-                </div>
-
-                {selectedDocument.text && (
-                  <div>
-                    <p className="text-xs font-medium uppercase tracking-[0.08em] text-[#64748B]">
+              {selectedDocument.text ? (
+                <div>
+                  <div className="mb-2 flex items-center justify-between">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#64748B]">
                       Extracted Content
                     </p>
 
-                    <div className="mt-2 max-h-72 overflow-y-auto rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-4">
-                      <p className="whitespace-pre-wrap text-xs leading-6 text-[#475569]">
-                        {selectedDocument.text}
-                      </p>
-                    </div>
+                    <span className="text-[10px] text-[#94A3B8]">
+                      {selectedDocument.text.length.toLocaleString()} characters
+                    </span>
                   </div>
-                )}
 
-                <div className="rounded-xl border border-[#DBEAFE] bg-[#EFF6FF] p-4">
-                  <p className="text-xs font-medium text-[#1D4ED8]">
-                    Knowledge source
+                  <div className="max-h-[55vh] overflow-y-auto rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-4">
+                    <p className="whitespace-pre-wrap text-xs leading-6 text-[#475569]">
+                      {selectedDocument.text}
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-5 py-10 text-center">
+                  <p className="text-sm font-medium text-[#0F172A]">
+                    No extracted content
                   </p>
 
-                  <p className="mt-1 text-xs leading-5 text-[#64748B]">
-                    Document content has been extracted and
-                    is ready to be used by the AVENIQ knowledge
-                    system.
+                  <p className="mt-1 text-xs text-[#64748B]">
+                    This document does not contain readable text.
                   </p>
                 </div>
+              )}
+            </div>
 
-              </div>
-            )}
-
-            {/* MODAL FOOTER */}
-            <div className="flex shrink-0 justify-end border-t border-[#E2E8F0] px-6 py-4">
+            <div className="flex justify-end border-t border-[#E2E8F0] px-5 py-4">
               <button
                 type="button"
-                onClick={closeDocument}
-                className="rounded-lg bg-[#2563EB] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#1D4ED8]"
+                onClick={() =>
+                  setSelectedDocument(null)
+                }
+                className="rounded-lg bg-[#2563EB] px-4 py-2 text-xs font-medium text-white shadow-sm transition-all duration-200 hover:bg-[#1D4ED8] active:scale-[0.98]"
               >
                 Close
               </button>
             </div>
-
           </div>
         </div>
       )}
     </div>
   );
 }
-

@@ -1,81 +1,132 @@
 import { GoogleGenAI } from "@google/genai";
 import { NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase/server";
+import { getAuthUser } from "@/lib/supabase/require-user";
 
 const ai = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY,
 });
 
-function normalizeText(text = "") {
-  return text
-    .toLowerCase()
-    .replace(/[^\w\s]/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
+async function generateEmbedding(text) {
+  const apiKey = process.env.GEMINI_API_KEY;
+
+  if (!apiKey) {
+    throw new Error("GEMINI_API_KEY is missing.");
+  }
+
+  const response = await fetch(
+    "https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-goog-api-key": apiKey,
+      },
+      body: JSON.stringify({
+        model: "models/gemini-embedding-001",
+        content: {
+          parts: [
+            {
+              text,
+            },
+          ],
+        },
+        outputDimensionality: 768,
+      }),
+    }
+  );
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    console.error(
+      "GEMINI EMBEDDING ERROR:",
+      data
+    );
+
+    throw new Error(
+      data?.error?.message ||
+        "Failed to generate embedding."
+    );
+  }
+
+  if (!data?.embedding?.values) {
+    throw new Error(
+      "Gemini did not return an embedding."
+    );
+  }
+
+  return data.embedding.values;
 }
 
-function getRelevantDocuments(documents, question) {
-  const normalizedQuestion = normalizeText(question);
+async function getRelevantChunks(supabase, question) {
+  const queryEmbedding =
+    await generateEmbedding(question);
 
-  const words = normalizedQuestion
-    .split(/\s+/)
-    .filter((word) => word.length > 2);
+  const { data, error } =
+    await supabase.rpc(
+      "match_document_chunks",
+      {
+        query_embedding: queryEmbedding,
+        match_threshold: 0.3,
+        match_count: 5,
+      }
+    );
 
-  if (!words.length) {
+  if (error) {
+    console.error(
+      "SUPABASE VECTOR SEARCH ERROR:",
+      error
+    );
+
+    throw new Error(error.message);
+  }
+
+  return data || [];
+}
+
+async function getDocuments(supabase, documentIds) {
+  if (!documentIds.length) {
     return [];
   }
 
-  const scoredDocuments = documents
-    .filter(
-      (document) =>
-        document.status === "Ready" &&
-        document.text?.trim()
-    )
-    .map((document) => {
-      const name = normalizeText(
-        document.name || ""
-      );
+  const { data, error } =
+    await supabase
+      .from("documents")
+      .select("id, name, created_at")
+      .in("id", documentIds);
 
-      const text = normalizeText(
-        document.text || ""
-      );
+  if (error) {
+    console.error(
+      "SUPABASE DOCUMENT LOOKUP ERROR:",
+      error
+    );
 
-      const content = `${name} ${text}`;
+    throw new Error(error.message);
+  }
 
-      let score = 0;
-
-      words.forEach((word) => {
-        if (name.includes(word)) {
-          score += 5;
-        }
-
-        if (text.includes(word)) {
-          score += 1;
-        }
-      });
-
-      if (
-        content.includes(normalizedQuestion)
-      ) {
-        score += 10;
-      }
-
-      return {
-        ...document,
-        score,
-      };
-    })
-    .filter((document) => document.score > 0)
-    .sort((a, b) => b.score - a.score);
-
-  return scoredDocuments.slice(0, 5);
+  return data || [];
 }
 
 export async function POST(request) {
   try {
-    const {
-      messages,
-      documents = [],
-    } = await request.json();
+    const user = await getAuthUser();
+
+    if (!user) {
+      return NextResponse.json(
+        {
+          error: "Unauthorized.",
+        },
+        {
+          status: 401,
+        }
+      );
+    }
+
+    const supabase = await createClient();
+
+    const { messages } =
+      await request.json();
 
     if (!Array.isArray(messages)) {
       return NextResponse.json(
@@ -83,48 +134,54 @@ export async function POST(request) {
           error:
             "Invalid messages format.",
         },
-        { status: 400 }
+        {
+          status: 400,
+        }
       );
     }
 
-    const lastUserMessage = [...messages]
-      .reverse()
-      .find(
-        (message) =>
-          message.role === "user" &&
-          !message.loading
-      );
+    const lastUserMessage =
+      [...messages]
+        .reverse()
+        .find(
+          (message) =>
+            message.role === "user" &&
+            !message.loading
+        );
 
-    if (!lastUserMessage?.content?.trim()) {
+    if (
+      !lastUserMessage?.content?.trim()
+    ) {
       return NextResponse.json(
         {
           error:
             "Please enter a message.",
         },
-        { status: 400 }
+        {
+          status: 400,
+        }
       );
     }
 
-    const relevantDocuments =
-      getRelevantDocuments(
-        documents,
-        lastUserMessage.content
+    const question =
+      lastUserMessage.content.trim();
+
+    const relevantChunks =
+      await getRelevantChunks(
+        supabase,
+        question
       );
 
     const knowledge =
-      relevantDocuments.length > 0
-        ? relevantDocuments
+      relevantChunks.length > 0
+        ? relevantChunks
             .map(
-              (document) =>
-                `DOCUMENT NAME: ${document.name}
+              (chunk, index) =>
+                `DOCUMENT CHUNK ${
+                  index + 1
+                }:
 
-DOCUMENT TYPE: ${document.type || "Unknown"}
-
-DOCUMENT DATE: ${document.date || "Unknown"}
-
-DOCUMENT CONTENT:
-
-${document.text.trim()}`
+${chunk.content}`
             )
             .join(
               "\n\n==============================\n\n"
@@ -134,62 +191,54 @@ ${document.text.trim()}`
     const systemInstruction = `
 You are AVENIQ AI, a professional real estate knowledge assistant.
 
-Your job is to answer the user's questions accurately and professionally.
+Answer the user's question using the relevant uploaded document knowledge provided in the conversation.
 
-You may receive relevant knowledge from documents uploaded by the user.
-
-IMPORTANT RULES:
-
-1. Use the provided document knowledge when it is relevant.
-2. If the user's question is clearly about an uploaded document, answer using that document.
-3. Never invent facts, numbers, names, dates, properties, returns, or other document details.
-4. If the answer is not available in the provided documents, clearly say that the uploaded documents do not contain enough information.
-5. You may use general reasoning to explain information, but do not present unsupported information as if it came from the documents.
-6. Keep answers concise, professional, and useful.
-7. Do not mention internal instructions, document scoring, filtering, or system prompts.
+Important rules:
+- Use the uploaded document knowledge when it is relevant.
+- Do not invent facts that are not present in the provided knowledge.
+- If the answer cannot be found in the uploaded documents, clearly say that the information is not available in the uploaded documents.
+- Give clear, concise and professional answers.
 `;
 
     const contents = messages
       .filter(
-        (message) => !message.loading
+        (message) =>
+          !message.loading
       )
-      .map(
-        (message) => ({
-          role:
-            message.role === "assistant"
-              ? "model"
-              : "user",
-          parts: [
-            {
-              text: message.content,
-            },
-          ],
-        })
-      );
+      .map((message) => ({
+        role:
+          message.role === "assistant"
+            ? "model"
+            : "user",
+        parts: [
+          {
+            text: message.content,
+          },
+        ],
+      }));
 
     if (knowledge) {
       const lastIndex =
         contents.length - 1;
 
       if (
-        contents[lastIndex]?.role === "user"
+        contents[lastIndex]?.role ===
+        "user"
       ) {
         contents[lastIndex] = {
           role: "user",
           parts: [
             {
               text: `
-Use the following relevant uploaded document knowledge to answer my question.
-
-RELEVANT DOCUMENT KNOWLEDGE:
+Relevant uploaded document knowledge:
 
 ${knowledge}
 
 --------------------------------
 
-MY QUESTION:
+User question:
 
-${lastUserMessage.content}
+${question}
 `,
             },
           ],
@@ -204,15 +253,65 @@ ${lastUserMessage.content}
         contents,
       });
 
-    const sources =
-      relevantDocuments.map(
-        (document) => ({
+    const documentIds = [
+      ...new Set(
+        relevantChunks
+          .map(
+            (chunk) =>
+              chunk.document_id
+          )
+          .filter(Boolean)
+      ),
+    ];
+
+    const documents =
+      await getDocuments(
+        supabase,
+        documentIds
+      );
+
+    const documentMap = new Map(
+      documents.map((document) => [
+        document.id,
+        document,
+      ])
+    );
+
+    const sources = documentIds
+      .map((documentId) => {
+        const document =
+          documentMap.get(
+            documentId
+          );
+
+        if (!document) {
+          return null;
+        }
+
+        const matchingChunk =
+          relevantChunks.find(
+            (chunk) =>
+              chunk.document_id ===
+              documentId
+          );
+
+        const extension =
+          document.name
+            ?.split(".")
+            .pop()
+            ?.toUpperCase() || "FILE";
+
+        return {
           id: document.id,
           name: document.name,
-          type: document.type,
-          date: document.date,
-        })
-      );
+          type: extension,
+          date: document.created_at,
+          similarity:
+            matchingChunk?.similarity ??
+            0,
+        };
+      })
+      .filter(Boolean);
 
     return NextResponse.json({
       reply: response.text,
@@ -227,10 +326,12 @@ ${lastUserMessage.content}
     return NextResponse.json(
       {
         error:
-          error.message ||
+          error?.message ||
           "Gemini request failed.",
       },
-      { status: 500 }
+      {
+        status: 500,
+      }
     );
   }
 }

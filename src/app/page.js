@@ -8,38 +8,123 @@ import Suggestions from "./components/Suggestions";
 import Documents from "./components/Documents";
 import Search from "./components/Search";
 import Settings from "./components/Settings";
+import { supabase } from "@/lib/supabase";
 
 export default function Home() {
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState([]);
   const [feedback, setFeedback] = useState({});
   const [activePage, setActivePage] = useState("chat");
-
   const [chats, setChats] = useState([]);
   const [activeChatId, setActiveChatId] = useState(null);
   const [hydrated, setHydrated] = useState(false);
+  const [userId, setUserId] = useState(null);
 
   const activeChatIdRef = useRef(null);
 
   useEffect(() => {
-    const savedChats = localStorage.getItem("aveniq-chats");
+    let active = true;
 
-    if (savedChats) {
-      try {
-        setChats(JSON.parse(savedChats));
-      } catch (error) {
-        console.error("CHAT HISTORY ERROR:", error);
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        if (!active) return;
+
+        setUserId(
+          session?.user?.id || null
+        );
       }
-    }
+    );
 
-    setHydrated(true);
+    supabase.auth
+      .getUser()
+      .then(({ data }) => {
+        if (active) {
+          setUserId(
+            data?.user?.id || null
+          );
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setUserId(null);
+        }
+      });
+
+    return () => {
+      active = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   useEffect(() => {
-    if (!hydrated) return;
+    let active = true;
 
-    localStorage.setItem("aveniq-chats", JSON.stringify(chats));
-  }, [chats, hydrated]);
+    if (!userId) {
+      Promise.resolve()
+        .then(() => {
+          if (!active) return;
+
+          setChats([]);
+          setActiveChatId(null);
+          setMessages([]);
+          setFeedback({});
+          setHydrated(false);
+          activeChatIdRef.current = null;
+        });
+
+      return () => {
+        active = false;
+      };
+    }
+
+    const key = `aveniq-chats-${userId}`;
+
+    Promise.resolve()
+      .then(() => {
+        return localStorage.getItem(
+          key
+        );
+      })
+      .then((savedChats) => {
+        if (!active) return;
+
+        if (savedChats) {
+          try {
+            setChats(
+              JSON.parse(savedChats)
+            );
+          } catch (error) {
+            console.error(
+              "CHAT HISTORY ERROR:",
+              error
+            );
+          }
+        }
+
+        setHydrated(true);
+      })
+      .catch((error) => {
+        console.error(
+          "CHAT HISTORY ERROR:",
+          error
+        );
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [userId]);
+
+  useEffect(() => {
+    if (!hydrated || !userId) return;
+
+    localStorage.setItem(
+      `aveniq-chats-${userId}`,
+      JSON.stringify(chats)
+    );
+  }, [chats, hydrated, userId]);
 
   function createNewChat() {
     setMessage("");
@@ -47,7 +132,6 @@ export default function Home() {
     setFeedback({});
     setActivePage("chat");
     setActiveChatId(null);
-
     activeChatIdRef.current = null;
   }
 
@@ -78,9 +162,12 @@ export default function Home() {
         };
 
         activeChatIdRef.current = newChatId;
-
         setActiveChatId(newChatId);
-        setChats((currentChats) => [newChat, ...currentChats]);
+
+        setChats((currentChats) => [
+          newChat,
+          ...currentChats,
+        ]);
 
         return nextMessages;
       }
@@ -104,15 +191,22 @@ export default function Home() {
     setActivePage("chat");
     setActiveChatId(chat.id);
     activeChatIdRef.current = chat.id;
-
     setMessages(chat.messages);
+    setMessage("");
+    setFeedback({});
+  }
+
+  function clearChat() {
+    setMessages([]);
     setMessage("");
     setFeedback({});
   }
 
   function deleteChat(chatId) {
     setChats((currentChats) =>
-      currentChats.filter((chat) => chat.id !== chatId)
+      currentChats.filter(
+        (chat) => chat.id !== chatId
+      )
     );
 
     if (activeChatIdRef.current === chatId) {
@@ -121,13 +215,106 @@ export default function Home() {
       setFeedback({});
       setActiveChatId(null);
       setActivePage("chat");
-
       activeChatIdRef.current = null;
     }
   }
 
+  function renderPage() {
+    if (activePage === "documents") {
+      return <Documents />;
+    }
+
+    if (activePage === "search") {
+      return <Search />;
+    }
+
+    if (activePage === "settings") {
+      return <Settings />;
+    }
+
+    return (
+      <div className="flex min-h-0 flex-1 flex-col bg-white">
+        <ChatHeader
+          onNewChat={createNewChat}
+          onClearChat={clearChat}
+          onOpenSettings={() =>
+            setActivePage("settings")
+          }
+        />
+
+        <section className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
+          <div className="pointer-events-none absolute inset-0 overflow-hidden">
+            <div className="absolute left-1/2 top-[-180px] h-[420px] w-[420px] -translate-x-1/2 rounded-full bg-[#2563EB]/[0.035] blur-3xl" />
+
+            <div className="absolute bottom-[-220px] right-[-160px] h-[360px] w-[360px] rounded-full bg-[#60A5FA]/[0.025] blur-3xl" />
+          </div>
+
+          <div className="relative flex-1 overflow-y-auto">
+            <div className="mx-auto flex min-h-full w-full max-w-5xl flex-col px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-10">
+              {messages.length === 0 ? (
+                <div className="flex flex-1 flex-col justify-center py-8">
+                  <div className="mx-auto w-full max-w-3xl">
+                    <div className="mb-8 text-center sm:mb-10">
+                      <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl border border-[#DBEAFE] bg-white shadow-[0_8px_30px_rgba(37,99,235,0.08)]">
+                        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#2563EB] text-[11px] font-bold tracking-wide text-white shadow-sm">
+                          AI
+                        </div>
+                      </div>
+
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#64748B]">
+                        AVENIQ Intelligence
+                      </p>
+
+                      <h1 className="mt-3 text-2xl font-semibold tracking-[-0.03em] text-[#0F172A] sm:text-3xl lg:text-[34px]">
+                        Real Estate Intelligence
+                      </h1>
+
+                      <p className="mx-auto mt-3 max-w-lg text-sm leading-6 text-[#64748B]">
+                        Ask questions, analyze properties,
+                        and explore your real estate
+                        knowledge with AVENIQ.
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl border border-[#E2E8F0] bg-white p-1.5 shadow-[0_12px_40px_rgba(15,23,42,0.05)]">
+                      <ChatBox
+                        messages={messages}
+                        setMessages={handleMessagesChange}
+                        message={message}
+                        setMessage={setMessage}
+                        feedback={feedback}
+                        setFeedback={setFeedback}
+                      />
+                    </div>
+
+                    {!message && (
+                      <Suggestions
+                        onSelect={setMessage}
+                      />
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="flex min-h-full flex-col">
+                  <ChatBox
+                    messages={messages}
+                    setMessages={handleMessagesChange}
+                    message={message}
+                    setMessage={setMessage}
+                    feedback={feedback}
+                    setFeedback={setFeedback}
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+        </section>
+      </div>
+    );
+  }
+
   return (
-    <main className="flex h-screen overflow-hidden bg-[#F8FAFC] text-[#111827]">
+    <main className="flex h-screen overflow-hidden bg-white text-[#0F172A]">
       <Sidebar
         activePage={activePage}
         setActivePage={setActivePage}
@@ -138,59 +325,56 @@ export default function Home() {
         onDeleteChat={deleteChat}
       />
 
-      <div className="flex min-w-0 flex-1 flex-col">
-        {activePage === "documents" ? (
-          <Documents />
-        ) : activePage === "search" ? (
-          <Search />
-        ) : activePage === "settings" ? (
-          <Settings />
-        ) : (
-          <>
-            <ChatHeader />
-
-            <section className="flex min-h-0 flex-1 flex-col">
-              <div className="flex-1 overflow-y-auto">
-                <div className="mx-auto flex min-h-full w-full max-w-4xl flex-col justify-center px-6 py-12">
-                  {messages.length === 0 && (
-                    <div className="mb-8 text-center">
-                      <div className="mx-auto mb-5 flex h-12 w-12 items-center justify-center rounded-xl bg-[#EFF6FF] text-sm font-semibold text-[#2563EB] ring-1 ring-[#DBEAFE]">
-                        AI
-                      </div>
-
-                      <p className="mb-2 text-xs font-medium uppercase tracking-[0.16em] text-[#64748B]">
-                        AVENIQ Intelligence
-                      </p>
-
-                      <h1 className="text-3xl font-semibold tracking-tight text-[#0F172A]">
-                        Real Estate Intelligence
-                      </h1>
-
-                      <p className="mx-auto mt-3 max-w-lg text-sm leading-6 text-[#64748B]">
-                        Ask questions, analyze properties, and explore your
-                        real estate knowledge.
-                      </p>
-                    </div>
-                  )}
-
-                  <ChatBox
-                    messages={messages}
-                    setMessages={handleMessagesChange}
-                    message={message}
-                    setMessage={setMessage}
-                    feedback={feedback}
-                    setFeedback={setFeedback}
-                  />
-
-                  {!message && messages.length === 0 && (
-                    <Suggestions onSelect={setMessage} />
-                  )}
-                </div>
-              </div>
-            </section>
-          </>
-        )}
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+        <div
+          key={activePage}
+          className="flex min-h-0 flex-1 animate-[pageEnter_220ms_ease-out]"
+        >
+          {renderPage()}
+        </div>
       </div>
+
+      <style jsx global>{`
+        @keyframes pageEnter {
+          from {
+            opacity: 0;
+            transform: translateY(5px);
+          }
+
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        * {
+          scrollbar-width: thin;
+          scrollbar-color: #cbd5e1 transparent;
+        }
+
+        *::-webkit-scrollbar {
+          width: 6px;
+          height: 6px;
+        }
+
+        *::-webkit-scrollbar-track {
+          background: transparent;
+        }
+
+        *::-webkit-scrollbar-thumb {
+          background: #cbd5e1;
+          border-radius: 999px;
+        }
+
+        *::-webkit-scrollbar-thumb:hover {
+          background: #94a3b8;
+        }
+
+        ::selection {
+          background: #dbeafe;
+          color: #1e3a8a;
+        }
+      `}</style>
     </main>
   );
 }

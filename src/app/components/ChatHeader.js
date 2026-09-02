@@ -1,63 +1,161 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
-export default function ChatHeader() {
+export default function ChatHeader({
+  onNewChat,
+  onClearChat,
+  onOpenSettings,
+}) {
   const [showMenu, setShowMenu] = useState(false);
+  const menuRef = useRef(null);
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (
+        menuRef.current &&
+        !menuRef.current.contains(event.target)
+      ) {
+        setShowMenu(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   return (
-    <header className="flex items-center justify-between border-b border-[#E2E8F0] bg-white px-4 py-3 sm:px-6">
-      {/* Left */}
+    <header className="relative z-30 flex h-16 shrink-0 items-center justify-between border-b border-slate-200/80 bg-white px-4 sm:px-6">
       <div className="flex min-w-0 items-center gap-3">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#EFF6FF] text-sm font-semibold text-[#2563EB] ring-1 ring-[#DBEAFE]">
+        <div className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-[10px] font-bold tracking-wide text-white shadow-[0_4px_12px_rgba(37,99,235,0.18)]">
           AI
+
+          <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full border-2 border-white bg-blue-500" />
         </div>
 
         <div className="min-w-0">
-          <h1 className="truncate text-sm font-semibold text-[#0F172A]">
-            AI Assistant
-          </h1>
-          <p className="text-xs text-[#94A3B8]">
+          <div className="flex items-center gap-2">
+            <h1 className="truncate text-[13px] font-semibold tracking-[-0.01em] text-slate-900">
+              AI Assistant
+            </h1>
+
+            <span className="hidden items-center gap-1.5 rounded-full border border-blue-100 bg-blue-50 px-2 py-0.5 text-[9px] font-semibold text-blue-600 sm:inline-flex">
+              <span className="h-1.5 w-1.5 rounded-full bg-blue-500" />
+              Online
+            </span>
+          </div>
+
+          <p className="mt-0.5 truncate text-[10px] text-slate-400">
             Real Estate Intelligence
           </p>
         </div>
       </div>
 
-      {/* Right */}
-      <div className="relative flex items-center gap-2">
+      <div
+        ref={menuRef}
+        className="relative flex items-center gap-1.5"
+      >
         <button
           type="button"
-          className="hidden rounded-lg px-3 py-2 text-sm text-[#64748B] transition hover:bg-[#F1F5F9] hover:text-[#0F172A] sm:block"
+          onClick={() => onNewChat?.()}
+          className="hidden h-8 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-[11px] font-medium text-slate-600 transition-all duration-200 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-600 sm:inline-flex"
         >
+          <svg
+            viewBox="0 0 20 20"
+            fill="none"
+            className="h-3.5 w-3.5"
+          >
+            <path
+              d="M10 4v12M4 10h12"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+            />
+          </svg>
+
           New Chat
         </button>
 
         <button
           type="button"
-          onClick={() => setShowMenu(!showMenu)}
+          onClick={() =>
+            setShowMenu((current) => !current)
+          }
           aria-label="Chat options"
-          className="flex h-9 w-9 items-center justify-center rounded-lg text-lg text-[#64748B] transition hover:bg-[#F1F5F9] hover:text-[#0F172A]"
+          aria-expanded={showMenu}
+          className={`flex h-8 w-8 items-center justify-center rounded-lg transition-all duration-200 ${
+            showMenu
+              ? "bg-slate-100 text-slate-900"
+              : "text-slate-400 hover:bg-slate-50 hover:text-slate-700"
+          }`}
         >
-          ⋯
+          <span className="flex items-center gap-[3px]">
+            <span className="h-1 w-1 rounded-full bg-current" />
+            <span className="h-1 w-1 rounded-full bg-current" />
+            <span className="h-1 w-1 rounded-full bg-current" />
+          </span>
         </button>
 
-        {showMenu && (
-          <div className="absolute right-0 top-11 z-20 w-40 rounded-xl border border-[#E2E8F0] bg-white p-1.5 shadow-lg">
-            <button
-              type="button"
-              className="w-full rounded-lg px-3 py-2 text-left text-sm text-[#475569] transition hover:bg-[#F1F5F9]"
+        <div
+          className={`absolute right-0 top-11 w-44 origin-top-right rounded-xl border border-slate-200 bg-white p-1.5 shadow-[0_12px_30px_rgba(15,23,42,0.10)] transition-all duration-200 ${
+            showMenu
+              ? "visible translate-y-0 scale-100 opacity-100"
+              : "invisible -translate-y-1 scale-95 opacity-0"
+          }`}
+        >
+          <button
+            type="button"
+            onClick={() => {
+              setShowMenu(false);
+              onClearChat?.();
+            }}
+            className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-[11px] font-medium text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-900"
+          >
+            <svg
+              viewBox="0 0 20 20"
+              fill="none"
+              className="h-3.5 w-3.5 text-slate-400"
             >
-              Clear Chat
-            </button>
+              <path
+                d="M4.5 5.5h11M7 5.5V4h6v1.5M6 8v7.5h8V8M8.5 10.5v3M11.5 10.5v3"
+                stroke="currentColor"
+                strokeWidth="1.4"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
 
-            <button
-              type="button"
-              className="w-full rounded-lg px-3 py-2 text-left text-sm text-[#475569] transition hover:bg-[#F1F5F9]"
+            Clear Chat
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setShowMenu(false);
+              onOpenSettings?.();
+            }}
+            className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-[11px] font-medium text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-900"
+          >
+            <svg
+              viewBox="0 0 20 20"
+              fill="none"
+              className="h-3.5 w-3.5 text-slate-400"
             >
-              Settings
-            </button>
-          </div>
-        )}
+              <path
+                d="M10 3.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13ZM10 7v3l2 1.5"
+                stroke="currentColor"
+                strokeWidth="1.4"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+
+            Settings
+          </button>
+        </div>
       </div>
     </header>
   );
