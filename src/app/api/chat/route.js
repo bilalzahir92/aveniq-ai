@@ -3,10 +3,6 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getAuthUser } from "@/lib/supabase/require-user";
 
-const ai = new GoogleGenAI({
-  apiKey: process.env.GEMINI_API_KEY,
-});
-
 async function generateEmbedding(text) {
   const apiKey = process.env.GEMINI_API_KEY;
 
@@ -39,10 +35,7 @@ async function generateEmbedding(text) {
   const data = await response.json();
 
   if (!response.ok) {
-    console.error(
-      "GEMINI EMBEDDING ERROR:",
-      data
-    );
+    console.error("GEMINI EMBEDDING ERROR:", data);
 
     throw new Error(
       data?.error?.message ||
@@ -59,7 +52,10 @@ async function generateEmbedding(text) {
   return data.embedding.values;
 }
 
-async function getRelevantChunks(supabase, question) {
+async function getRelevantChunks(
+  supabase,
+  question
+) {
   const queryEmbedding =
     await generateEmbedding(question);
 
@@ -85,7 +81,10 @@ async function getRelevantChunks(supabase, question) {
   return data || [];
 }
 
-async function getDocuments(supabase, documentIds) {
+async function getDocuments(
+  supabase,
+  documentIds
+) {
   if (!documentIds.length) {
     return [];
   }
@@ -110,6 +109,21 @@ async function getDocuments(supabase, documentIds) {
 
 export async function POST(request) {
   try {
+    const apiKey =
+      process.env.GEMINI_API_KEY;
+
+    if (!apiKey) {
+      throw new Error(
+        "GEMINI_API_KEY is missing."
+      );
+    }
+
+    // Initialize Gemini only when the API
+    // request actually runs.
+    const ai = new GoogleGenAI({
+      apiKey,
+    });
+
     const user = await getAuthUser();
 
     if (!user) {
@@ -123,7 +137,8 @@ export async function POST(request) {
       );
     }
 
-    const supabase = await createClient();
+    const supabase =
+      await createClient();
 
     const { messages } =
       await request.json();
@@ -166,11 +181,19 @@ export async function POST(request) {
     const question =
       lastUserMessage.content.trim();
 
+    // -----------------------------
+    // RAG: Generate query embedding
+    // -----------------------------
+
     const relevantChunks =
       await getRelevantChunks(
         supabase,
         question
       );
+
+    // -----------------------------
+    // Build knowledge context
+    // -----------------------------
 
     const knowledge =
       relevantChunks.length > 0
@@ -188,6 +211,10 @@ ${chunk.content}`
             )
         : "";
 
+    // -----------------------------
+    // System instruction
+    // -----------------------------
+
     const systemInstruction = `
 You are AVENIQ AI, a professional real estate knowledge assistant.
 
@@ -199,6 +226,10 @@ Important rules:
 - If the answer cannot be found in the uploaded documents, clearly say that the information is not available in the uploaded documents.
 - Give clear, concise and professional answers.
 `;
+
+    // -----------------------------
+    // Convert messages for Gemini
+    // -----------------------------
 
     const contents = messages
       .filter(
@@ -216,6 +247,10 @@ Important rules:
           },
         ],
       }));
+
+    // -----------------------------
+    // Add RAG knowledge to question
+    // -----------------------------
 
     if (knowledge) {
       const lastIndex =
@@ -246,12 +281,20 @@ ${question}
       }
     }
 
+    // -----------------------------
+    // Generate Gemini response
+    // -----------------------------
+
     const response =
       await ai.models.generateContent({
         model: "gemini-3.5-flash-lite",
         systemInstruction,
         contents,
       });
+
+    // -----------------------------
+    // Get source document IDs
+    // -----------------------------
 
     const documentIds = [
       ...new Set(
@@ -264,18 +307,29 @@ ${question}
       ),
     ];
 
+    // -----------------------------
+    // Get source documents
+    // -----------------------------
+
     const documents =
       await getDocuments(
         supabase,
         documentIds
       );
 
-    const documentMap = new Map(
-      documents.map((document) => [
-        document.id,
-        document,
-      ])
-    );
+    const documentMap =
+      new Map(
+        documents.map(
+          (document) => [
+            document.id,
+            document,
+          ]
+        )
+      );
+
+    // -----------------------------
+    // Build sources
+    // -----------------------------
 
     const sources = documentIds
       .map((documentId) => {
@@ -299,7 +353,8 @@ ${question}
           document.name
             ?.split(".")
             .pop()
-            ?.toUpperCase() || "FILE";
+            ?.toUpperCase() ||
+          "FILE";
 
         return {
           id: document.id,
@@ -312,6 +367,10 @@ ${question}
         };
       })
       .filter(Boolean);
+
+    // -----------------------------
+    // Return response
+    // -----------------------------
 
     return NextResponse.json({
       reply: response.text,
@@ -335,3 +394,4 @@ ${question}
     );
   }
 }
+
