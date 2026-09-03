@@ -35,7 +35,7 @@ function Toggle({ enabled, onChange }) {
 function SettingCard({ title, description, children }) {
   return (
     <section className="overflow-hidden rounded-2xl border border-[#E2E8F0] bg-white shadow-[0_1px_3px_rgba(15,23,42,0.03)] transition-all duration-200 hover:border-[#D7DEE8] hover:shadow-[0_8px_30px_rgba(15,23,42,0.045)]">
-      <div className="border-b border-[#E2E8F0] px-5 py-5 sm:px-6">
+      <div className="border-b border-[#E2E8F0] px-4 py-4 sm:px-6 sm:py-5">
         <h2 className="text-sm font-semibold tracking-[-0.01em] text-[#0F172A]">
           {title}
         </h2>
@@ -69,7 +69,7 @@ function Field({ label, value, onChange }) {
   );
 }
 
-export default function Settings() {
+export default function Settings({ onToggleSidebar }) {
   const [workspaceName, setWorkspaceName] = useState(
     DEFAULT_SETTINGS.workspaceName
   );
@@ -164,8 +164,30 @@ export default function Settings() {
 
   return (
     <section className="flex-1 overflow-y-auto bg-[#F8FAFC]">
-      <div className="mx-auto w-full max-w-4xl px-4 py-7 sm:px-6 sm:py-9 lg:px-8">
-        <header className="border-b border-[#E2E8F0] pb-7">
+      <div className="flex h-14 shrink-0 items-center gap-2.5 border-b border-[#E2E8F0] bg-white px-3 lg:hidden">
+        <button
+          type="button"
+          onClick={onToggleSidebar}
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700"
+          aria-label="Open menu"
+        >
+          <svg viewBox="0 0 20 20" fill="none" className="h-5 w-5">
+            <path
+              d="M3 5h14M3 10h14M3 15h14"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+            />
+          </svg>
+        </button>
+
+        <h1 className="truncate text-[13px] font-semibold tracking-[-0.01em] text-slate-900">
+          Settings
+        </h1>
+      </div>
+
+      <div className="mx-auto w-full max-w-4xl px-4 py-6 sm:px-6 sm:py-9 lg:px-8">
+        <header className="border-b border-[#E2E8F0] pb-6 sm:pb-7">
           <div className="flex items-center gap-2">
             <span className="h-1.5 w-1.5 rounded-full bg-[#2563EB]" />
 
@@ -174,7 +196,7 @@ export default function Settings() {
             </p>
           </div>
 
-          <h1 className="mt-3 text-2xl font-semibold tracking-[-0.035em] text-[#0F172A] sm:text-3xl">
+          <h1 className="mt-3 text-xl font-semibold tracking-[-0.035em] text-[#0F172A] sm:text-2xl lg:text-3xl">
             Settings
           </h1>
 
@@ -184,12 +206,12 @@ export default function Settings() {
           </p>
         </header>
 
-        <div className="mt-7 space-y-5">
+        <div className="mt-6 space-y-5 sm:mt-7">
           <SettingCard
             title="Workspace"
             description="Basic information about your AVENIQ workspace."
           >
-            <div className="space-y-5 p-5 sm:p-6">
+            <div className="space-y-5 p-4 sm:p-6">
               <Field
                 label="Workspace Name"
                 value={workspaceName}
@@ -209,7 +231,7 @@ export default function Settings() {
             description="Control how AVENIQ AI uses knowledge and communicates with you."
           >
             <div className="divide-y divide-[#E2E8F0]">
-              <div className="flex items-center justify-between gap-6 px-5 py-5 transition-colors duration-200 hover:bg-[#FAFBFC] sm:px-6">
+              <div className="flex items-center justify-between gap-4 px-4 py-4 transition-colors duration-200 hover:bg-[#FAFBFC] sm:gap-6 sm:px-6 sm:py-5">
                 <div className="min-w-0">
                   <p className="text-[13px] font-medium text-[#0F172A]">
                     Show document sources
@@ -226,7 +248,7 @@ export default function Settings() {
                 />
               </div>
 
-              <div className="flex items-center justify-between gap-6 px-5 py-5 transition-colors duration-200 hover:bg-[#FAFBFC] sm:px-6">
+              <div className="flex items-center justify-between gap-4 px-4 py-4 transition-colors duration-200 hover:bg-[#FAFBFC] sm:gap-6 sm:px-6 sm:py-5">
                 <div className="min-w-0">
                   <p className="text-[13px] font-medium text-[#0F172A]">
                     Notifications
@@ -251,7 +273,7 @@ export default function Settings() {
             title="Account"
             description="Your current AVENIQ workspace account."
           >
-            <div className="p-5 sm:p-6">
+            <div className="p-4 sm:p-6">
               <div className="flex items-center justify-between gap-4 rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-4 transition-all duration-200 hover:border-[#D7DEE8] hover:bg-white">
                 <div className="flex min-w-0 items-center gap-3">
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[#DBEAFE] bg-[#EFF6FF] text-xs font-semibold text-[#2563EB]">
@@ -284,7 +306,7 @@ export default function Settings() {
             <button
               type="button"
               onClick={handleSave}
-              className="group ml-auto flex items-center gap-2 rounded-xl bg-[#2563EB] px-5 py-2.5 text-xs font-semibold text-white shadow-[0_2px_5px_rgba(37,99,235,0.15)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#1D4ED8] hover:shadow-[0_8px_24px_rgba(37,99,235,0.16)] active:translate-y-0"
+              className="group ml-auto flex items-center gap-2 rounded-xl bg-[#2563EB] px-4 py-2.5 text-xs font-semibold text-white shadow-[0_2px_5px_rgba(37,99,235,0.15)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#1D4ED8] hover:shadow-[0_8px_24px_rgba(37,99,235,0.16)] active:translate-y-0 sm:px-5"
             >
               {saved ? "Saved" : "Save Changes"}
 

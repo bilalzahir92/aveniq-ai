@@ -19,6 +19,7 @@ export default function Home() {
   const [activeChatId, setActiveChatId] = useState(null);
   const [hydrated, setHydrated] = useState(false);
   const [userId, setUserId] = useState(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const activeChatIdRef = useRef(null);
 
@@ -221,15 +222,27 @@ export default function Home() {
 
   function renderPage() {
     if (activePage === "documents") {
-      return <Documents />;
+      return (
+        <Documents
+          onToggleSidebar={() => setSidebarOpen(true)}
+        />
+      );
     }
 
     if (activePage === "search") {
-      return <Search />;
+      return (
+        <Search
+          onToggleSidebar={() => setSidebarOpen(true)}
+        />
+      );
     }
 
     if (activePage === "settings") {
-      return <Settings />;
+      return (
+        <Settings
+          onToggleSidebar={() => setSidebarOpen(true)}
+        />
+      );
     }
 
     return (
@@ -240,6 +253,7 @@ export default function Home() {
           onOpenSettings={() =>
             setActivePage("settings")
           }
+          onToggleSidebar={() => setSidebarOpen(true)}
         />
 
         <section className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
@@ -250,13 +264,13 @@ export default function Home() {
           </div>
 
           <div className="relative flex-1 overflow-y-auto">
-            <div className="mx-auto flex min-h-full w-full max-w-5xl flex-col px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-10">
+            <div className="mx-auto flex min-h-full w-full max-w-5xl flex-col px-3 py-5 sm:px-6 sm:py-8 lg:px-8 lg:py-10">
               {messages.length === 0 ? (
                 <div className="flex flex-1 flex-col justify-center py-8">
                   <div className="mx-auto w-full max-w-3xl">
                     <div className="mb-8 text-center sm:mb-10">
-                      <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl border border-[#DBEAFE] bg-white shadow-[0_8px_30px_rgba(37,99,235,0.08)]">
-                        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#2563EB] text-[11px] font-bold tracking-wide text-white shadow-sm">
+                      <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl border border-[#DBEAFE] bg-white shadow-[0_8px_30px_rgba(37,99,235,0.08)] sm:h-16 sm:w-16">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-[#2563EB] text-[11px] font-bold tracking-wide text-white shadow-sm sm:h-9 sm:w-9">
                           AI
                         </div>
                       </div>
@@ -265,11 +279,11 @@ export default function Home() {
                         AVENIQ Intelligence
                       </p>
 
-                      <h1 className="mt-3 text-2xl font-semibold tracking-[-0.03em] text-[#0F172A] sm:text-3xl lg:text-[34px]">
+                      <h1 className="mt-3 text-xl font-semibold tracking-[-0.03em] text-[#0F172A] sm:text-2xl lg:text-3xl">
                         Real Estate Intelligence
                       </h1>
 
-                      <p className="mx-auto mt-3 max-w-lg text-sm leading-6 text-[#64748B]">
+                      <p className="mx-auto mt-3 max-w-lg px-2 text-sm leading-6 text-[#64748B]">
                         Ask questions, analyze properties,
                         and explore your real estate
                         knowledge with AVENIQ.
@@ -315,15 +329,49 @@ export default function Home() {
 
   return (
     <main className="flex h-screen overflow-hidden bg-white text-[#0F172A]">
-      <Sidebar
-        activePage={activePage}
-        setActivePage={setActivePage}
-        onNewChat={createNewChat}
-        chats={chats}
-        activeChatId={activeChatId}
-        onOpenChat={openChat}
-        onDeleteChat={deleteChat}
-      />
+      <div className="hidden lg:block">
+        <Sidebar
+          activePage={activePage}
+          setActivePage={setActivePage}
+          onNewChat={createNewChat}
+          chats={chats}
+          activeChatId={activeChatId}
+          onOpenChat={openChat}
+          onDeleteChat={deleteChat}
+        />
+      </div>
+
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/30 backdrop-blur-[2px] lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      <div
+        className={`fixed inset-y-0 left-0 z-50 w-64 transition-transform duration-300 ease-in-out lg:hidden ${
+          sidebarOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
+        <Sidebar
+          activePage={activePage}
+          setActivePage={(page) => {
+            setActivePage(page);
+            setSidebarOpen(false);
+          }}
+          onNewChat={() => {
+            createNewChat();
+            setSidebarOpen(false);
+          }}
+          chats={chats}
+          activeChatId={activeChatId}
+          onOpenChat={(chat) => {
+            openChat(chat);
+            setSidebarOpen(false);
+          }}
+          onDeleteChat={deleteChat}
+        />
+      </div>
 
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         <div

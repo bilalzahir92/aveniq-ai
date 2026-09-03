@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-export default function Search() {
+export default function Search({ onToggleSidebar }) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
   const [searched, setSearched] = useState(false);
@@ -120,7 +120,29 @@ export default function Search() {
 
   return (
     <section className="flex-1 overflow-y-auto bg-[#F8FAFC]">
-      <div className="mx-auto max-w-5xl px-5 py-8 sm:px-6 lg:px-8">
+      <div className="flex h-14 shrink-0 items-center gap-2.5 border-b border-[#E2E8F0] bg-white px-3 lg:hidden">
+        <button
+          type="button"
+          onClick={onToggleSidebar}
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700"
+          aria-label="Open menu"
+        >
+          <svg viewBox="0 0 20 20" fill="none" className="h-5 w-5">
+            <path
+              d="M3 5h14M3 10h14M3 15h14"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+            />
+          </svg>
+        </button>
+
+        <h1 className="truncate text-[13px] font-semibold tracking-[-0.01em] text-slate-900">
+          Search
+        </h1>
+      </div>
+
+      <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
         <div
           className="animate-[fadeIn_0.35s_ease-out]"
         >
@@ -152,7 +174,7 @@ export default function Search() {
             </p>
           </div>
 
-          <h1 className="mt-4 text-2xl font-semibold tracking-[-0.035em] text-[#0F172A]">
+          <h1 className="mt-4 text-xl font-semibold tracking-[-0.035em] text-[#0F172A] sm:text-2xl">
             Search
           </h1>
 
@@ -167,7 +189,7 @@ export default function Search() {
         >
           <div className="flex items-center gap-2">
             <div className="flex min-w-0 flex-1 items-center">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center text-[#94A3B8]">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center text-[#94A3B8] sm:h-11 sm:w-11">
                 <svg
                   viewBox="0 0 24 24"
                   fill="none"
@@ -197,7 +219,7 @@ export default function Search() {
                   setQuery(event.target.value)
                 }
                 placeholder="Search documents, properties, reports..."
-                className="min-w-0 flex-1 bg-transparent py-3 text-sm text-[#111827] outline-none placeholder:text-[#94A3B8]"
+                className="min-w-0 flex-1 bg-transparent py-2.5 text-sm text-[#111827] outline-none placeholder:text-[#94A3B8] sm:py-3"
               />
 
               <div className="mr-2 hidden items-center gap-1.5 sm:flex">
@@ -214,12 +236,12 @@ export default function Search() {
             <button
               type="submit"
               disabled={loading}
-              className="flex h-11 shrink-0 items-center gap-2 rounded-xl bg-[#2563EB] px-4 text-xs font-semibold text-white shadow-sm transition-all duration-200 hover:bg-[#1D4ED8] hover:shadow-[0_7px_20px_rgba(37,99,235,0.18)] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
+              className="flex h-10 shrink-0 items-center gap-2 rounded-xl bg-[#2563EB] px-3 text-xs font-semibold text-white shadow-sm transition-all duration-200 hover:bg-[#1D4ED8] hover:shadow-[0_7px_20px_rgba(37,99,235,0.18)] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60 sm:h-11 sm:px-4"
             >
               {loading ? (
                 <>
                   <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                  Searching
+                  <span className="hidden sm:inline">Searching</span>
                 </>
               ) : (
                 <>
@@ -265,7 +287,7 @@ export default function Search() {
           </div>
 
           {!searched ? (
-            <div className="rounded-2xl border border-dashed border-[#CBD5E1] bg-white px-6 py-20 text-center transition-colors duration-200 hover:border-[#BFDBFE]">
+            <div className="rounded-2xl border border-dashed border-[#CBD5E1] bg-white px-6 py-12 text-center transition-colors duration-200 hover:border-[#BFDBFE] sm:py-20">
               <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-[#DBEAFE] bg-[#EFF6FF] text-[#2563EB]">
                 <svg
                   viewBox="0 0 24 24"
@@ -302,15 +324,15 @@ export default function Search() {
               {[1, 2, 3].map((item) => (
                 <div
                   key={item}
-                  className="rounded-2xl border border-[#E2E8F0] bg-white p-5"
+                  className="rounded-2xl border border-[#E2E8F0] bg-white p-4 sm:p-5"
                 >
                   <div className="animate-pulse">
                     <div className="flex items-center gap-3">
                       <div className="h-10 w-10 rounded-xl bg-[#E2E8F0]" />
 
                       <div className="flex-1">
-                        <div className="h-3.5 w-44 rounded bg-[#E2E8F0]" />
-                        <div className="mt-2 h-2.5 w-28 rounded bg-[#F1F5F9]" />
+                        <div className="h-3.5 w-32 rounded bg-[#E2E8F0] sm:w-44" />
+                        <div className="mt-2 h-2.5 w-20 rounded bg-[#F1F5F9] sm:w-28" />
                       </div>
                     </div>
 
@@ -321,7 +343,7 @@ export default function Search() {
               ))}
             </div>
           ) : results.length === 0 ? (
-            <div className="rounded-2xl border border-[#E2E8F0] bg-white px-6 py-16 text-center shadow-[0_1px_2px_rgba(15,23,42,0.02)]">
+            <div className="rounded-2xl border border-[#E2E8F0] bg-white px-6 py-12 text-center shadow-[0_1px_2px_rgba(15,23,42,0.02)] sm:py-16">
               <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl border border-[#E2E8F0] bg-[#F8FAFC] text-[#64748B]">
                 <svg
                   viewBox="0 0 24 24"
@@ -367,14 +389,14 @@ export default function Search() {
                   onClick={() =>
                     setSelectedDocument(document)
                   }
-                  className="group block w-full rounded-2xl border border-[#E2E8F0] bg-white p-5 text-left shadow-[0_1px_2px_rgba(15,23,42,0.02)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[#BFDBFE] hover:shadow-[0_12px_32px_rgba(15,23,42,0.06)]"
+                  className="group block w-full rounded-2xl border border-[#E2E8F0] bg-white p-4 text-left shadow-[0_1px_2px_rgba(15,23,42,0.02)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[#BFDBFE] hover:shadow-[0_12px_32px_rgba(15,23,42,0.06)] sm:p-5"
                   style={{
                     animation: `fadeInUp 0.3s ease-out ${index * 60}ms both`,
                   }}
                 >
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex min-w-0 items-start gap-3">
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#DBEAFE] bg-[#EFF6FF] text-[9px] font-bold tracking-wide text-[#2563EB]">
+                  <div className="flex items-start justify-between gap-3 sm:gap-4">
+                    <div className="flex min-w-0 items-start gap-2.5 sm:gap-3">
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[#DBEAFE] bg-[#EFF6FF] text-[9px] font-bold tracking-wide text-[#2563EB] sm:h-10 sm:w-10">
                         {document.type}
                       </div>
 
@@ -436,16 +458,16 @@ export default function Search() {
 
       {selectedDocument && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-[#0F172A]/40 p-5 backdrop-blur-sm animate-[fadeIn_0.2s_ease-out]"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-[#0F172A]/40 p-4 backdrop-blur-sm animate-[fadeIn_0.2s_ease-out] sm:p-5"
           onClick={() => setSelectedDocument(null)}
         >
           <div
             className="flex max-h-[88vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-[#E2E8F0] bg-white shadow-[0_25px_70px_rgba(15,23,42,0.18)] animate-[scaleIn_0.2s_ease-out]"
             onClick={(event) => event.stopPropagation()}
           >
-            <div className="flex items-start justify-between border-b border-[#E2E8F0] px-6 py-5">
-              <div className="flex min-w-0 items-start gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#DBEAFE] bg-[#EFF6FF] text-[9px] font-bold tracking-wide text-[#2563EB]">
+            <div className="flex items-start justify-between border-b border-[#E2E8F0] px-4 py-4 sm:px-6 sm:py-5">
+              <div className="flex min-w-0 items-start gap-2.5 sm:gap-3">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[#DBEAFE] bg-[#EFF6FF] text-[9px] font-bold tracking-wide text-[#2563EB] sm:h-10 sm:w-10">
                   {selectedDocument.type}
                 </div>
 
@@ -489,7 +511,7 @@ export default function Search() {
               </button>
             </div>
 
-            <div className="overflow-y-auto px-6 py-6">
+            <div className="overflow-y-auto px-4 py-4 sm:px-6 sm:py-6">
               <div className="mb-3 flex items-center justify-between gap-4">
                 <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#64748B]">
                   Extracted Content
@@ -500,14 +522,14 @@ export default function Search() {
                 </span>
               </div>
 
-              <div className="rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-5">
-                <p className="whitespace-pre-wrap text-xs leading-7 text-[#475569]">
+              <div className="rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-3.5 sm:p-5">
+                <p className="whitespace-pre-wrap break-words text-xs leading-7 text-[#475569]">
                   {selectedDocument.text}
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center justify-between border-t border-[#E2E8F0] px-6 py-4">
+            <div className="flex items-center justify-between border-t border-[#E2E8F0] px-4 py-3 sm:px-6 sm:py-4">
               <p className="hidden text-[10px] text-[#94A3B8] sm:block">
                 Press Esc to close
               </p>

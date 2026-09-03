@@ -6,6 +6,7 @@ export default function ChatHeader({
   onNewChat,
   onClearChat,
   onOpenSettings,
+  onToggleSidebar,
 }) {
   const [showMenu, setShowMenu] = useState(false);
   const menuRef = useRef(null);
@@ -28,12 +29,28 @@ export default function ChatHeader({
   }, []);
 
   return (
-    <header className="relative z-30 flex h-16 shrink-0 items-center justify-between border-b border-slate-200/80 bg-white px-4 sm:px-6">
-      <div className="flex min-w-0 items-center gap-3">
-        <div className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-[10px] font-bold tracking-wide text-white shadow-[0_4px_12px_rgba(37,99,235,0.18)]">
+    <header className="relative z-30 flex h-14 shrink-0 items-center justify-between border-b border-slate-200/80 bg-white px-3 sm:h-16 sm:px-6">
+      <div className="flex min-w-0 items-center gap-2.5 sm:gap-3">
+        <button
+          type="button"
+          onClick={onToggleSidebar}
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700 lg:hidden"
+          aria-label="Open menu"
+        >
+          <svg viewBox="0 0 20 20" fill="none" className="h-5 w-5">
+            <path
+              d="M3 5h14M3 10h14M3 15h14"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+            />
+          </svg>
+        </button>
+
+        <div className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-[10px] font-bold tracking-wide text-white shadow-[0_4px_12px_rgba(37,99,235,0.18)] sm:h-9 sm:w-9">
           AI
 
-          <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full border-2 border-white bg-blue-500" />
+          <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full border-2 border-white bg-blue-500 sm:h-2.5 sm:w-2.5" />
         </div>
 
         <div className="min-w-0">

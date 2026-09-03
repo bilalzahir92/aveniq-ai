@@ -214,9 +214,9 @@ export default function ChatBox({
   }
 
   return (
-    <div className="w-full">
+    <div className="w-full min-w-0">
       {messages.length > 0 && (
-        <div className="mb-8 space-y-8">
+        <div className="mb-6 space-y-5 sm:mb-8 sm:space-y-8">
           {messages.map((item) => {
             const isUser = item.role === "user";
             const isAssistant =
@@ -232,14 +232,14 @@ export default function ChatBox({
                 }`}
               >
                 <div
-                  className={`flex w-full max-w-4xl gap-3 ${
+                  className={`flex w-full max-w-4xl gap-2.5 sm:gap-3 ${
                     isUser
                       ? "justify-end"
                       : "justify-start"
                   }`}
                 >
                   {isAssistant && (
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-[#DBEAFE] bg-[#EFF6FF] text-[9px] font-bold tracking-wide text-[#2563EB]">
+                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl border border-[#DBEAFE] bg-[#EFF6FF] text-[9px] font-bold tracking-wide text-[#2563EB] sm:h-8 sm:w-8">
                       AI
                     </div>
                   )}
@@ -247,18 +247,18 @@ export default function ChatBox({
                   <div
                     className={`min-w-0 ${
                       isUser
-                        ? "max-w-[82%]"
-                        : "max-w-[90%]"
+                        ? "max-w-[85%] sm:max-w-[82%]"
+                        : "max-w-[92%] sm:max-w-[90%]"
                     }`}
                   >
                     {item.loading ? (
-                      <div className="rounded-2xl rounded-tl-md border border-[#E2E8F0] bg-white px-4 py-3.5 shadow-[0_4px_18px_rgba(15,23,42,0.04)]">
+                      <div className="rounded-2xl rounded-tl-md border border-[#E2E8F0] bg-white px-3 py-3 shadow-[0_4px_18px_rgba(15,23,42,0.04)] sm:px-4 sm:py-3.5">
                         {renderLoading()}
                       </div>
                     ) : (
                       <>
                         <div
-                          className={`rounded-2xl px-5 py-3.5 text-sm leading-7 ${
+                          className={`rounded-2xl px-3.5 py-3 text-sm leading-6 sm:px-5 sm:leading-7 ${
                             isUser
                               ? "rounded-br-md bg-[#2563EB] text-white shadow-[0_6px_20px_rgba(37,99,235,0.14)]"
                               : item.error
@@ -275,9 +275,9 @@ export default function ChatBox({
                           !item.error &&
                           item.sources?.length > 0 && (
                             <div className="mt-3 overflow-hidden rounded-2xl border border-[#E2E8F0] bg-white shadow-[0_4px_18px_rgba(15,23,42,0.035)]">
-                              <div className="flex items-center justify-between border-b border-[#F1F5F9] px-4 py-3">
+                              <div className="flex items-center justify-between border-b border-[#F1F5F9] px-3 py-3 sm:px-4">
                                 <div className="flex items-center gap-2.5">
-                                  <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] text-[#2563EB]">
+                                  <div className="flex h-7 w-7 items-center justify-center rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] text-[#2563EB] sm:h-8 sm:w-8">
                                     <svg
                                       viewBox="0 0 24 24"
                                       fill="none"
@@ -302,7 +302,7 @@ export default function ChatBox({
                                       Sources
                                     </p>
 
-                                    <p className="mt-0.5 text-[10px] text-[#94A3B8]">
+                                    <p className="mt-0.5 hidden text-[10px] text-[#94A3B8] sm:block">
                                       Knowledge used for this answer
                                     </p>
                                   </div>
@@ -321,9 +321,9 @@ export default function ChatBox({
                                         source.id ||
                                         `${source.name}-${index}`
                                       }
-                                      className="group flex items-center gap-3 px-4 py-3 transition-colors duration-200 hover:bg-[#F8FAFC]"
+                                      className="group flex items-center gap-2.5 px-3 py-3 transition-colors duration-200 hover:bg-[#F8FAFC] sm:gap-3 sm:px-4"
                                     >
-                                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[#DBEAFE] bg-[#EFF6FF] text-[8px] font-bold tracking-wide text-[#2563EB]">
+                                      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-[#DBEAFE] bg-[#EFF6FF] text-[8px] font-bold tracking-wide text-[#2563EB] sm:h-8 sm:w-8">
                                         {source.type ||
                                           "DOC"}
                                       </div>
@@ -379,7 +379,7 @@ export default function ChatBox({
 
                         {isAssistant &&
                           !item.error && (
-                            <div className="mt-2 flex items-center gap-1">
+                            <div className="mt-2 flex flex-wrap items-center gap-1">
                               <button
                                 type="button"
                                 onClick={() =>
@@ -475,10 +475,10 @@ export default function ChatBox({
             }}
             placeholder="Ask about properties, markets, investments..."
             rows={3}
-            className="min-h-[96px] w-full resize-none bg-transparent px-5 py-4 text-sm leading-6 text-[#111827] outline-none placeholder:text-[#94A3B8]"
+            className="min-h-[80px] w-full resize-none bg-transparent px-4 py-3 text-sm leading-6 text-[#111827] outline-none placeholder:text-[#94A3B8] sm:min-h-[96px] sm:px-5 sm:py-4"
           />
 
-          <div className="flex items-center justify-between border-t border-[#F1F5F9] px-4 py-3">
+          <div className="flex items-center justify-between border-t border-[#F1F5F9] px-3 py-2.5 sm:px-4 sm:py-3">
             <div className="flex items-center gap-2">
               <span className="hidden h-1.5 w-1.5 rounded-full bg-[#2563EB] sm:block" />
 
@@ -496,12 +496,12 @@ export default function ChatBox({
               disabled={
                 loading || !message.trim()
               }
-              className="group flex items-center gap-2 rounded-xl bg-[#2563EB] px-4 py-2.5 text-xs font-semibold text-white shadow-[0_4px_12px_rgba(37,99,235,0.15)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#1D4ED8] hover:shadow-[0_7px_18px_rgba(37,99,235,0.18)] disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none"
+              className="group flex items-center gap-1.5 rounded-xl bg-[#2563EB] px-3 py-2 text-xs font-semibold text-white shadow-[0_4px_12px_rgba(37,99,235,0.15)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#1D4ED8] hover:shadow-[0_7px_18px_rgba(37,99,235,0.18)] disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none sm:gap-2 sm:px-4 sm:py-2.5"
             >
               {loading ? (
                 <>
                   <span className="h-3 w-3 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                  Thinking
+                  <span className="hidden sm:inline">Thinking</span>
                 </>
               ) : (
                 <>

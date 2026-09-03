@@ -134,7 +134,7 @@ export default function Sidebar({
   return (
     <aside
       onClick={() => menuId && setMenuId(null)}
-      className="flex h-screen w-64 shrink-0 flex-col border-r border-[#E2E8F0] bg-white text-[#0F172A]"
+      className="flex h-full w-64 shrink-0 flex-col border-r border-[#E2E8F0] bg-white text-[#0F172A]"
     >
       <div className="flex h-16 shrink-0 items-center border-b border-[#E2E8F0] px-5">
         <button

@@ -43,7 +43,7 @@ const mapSupabaseDocument = (document) => ({
   text: document.content || "",
 });
 
-export default function Documents() {
+export default function Documents({ onToggleSidebar }) {
   const fileInputRef = useRef(null);
 
   const [documents, setDocuments] = useState([]);
@@ -287,21 +287,39 @@ export default function Documents() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col bg-[#F8FAFC]">
-      <header className="flex min-h-16 items-center justify-between border-b border-[#E2E8F0] bg-white px-6">
-        <div>
-          <div className="flex items-center gap-2">
-            <h2 className="text-sm font-semibold tracking-[-0.01em] text-[#0F172A]">
-              Documents
-            </h2>
+      <header className="flex min-h-14 flex-col justify-center gap-3 border-b border-[#E2E8F0] bg-white px-4 py-3 sm:min-h-16 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-0">
+        <div className="flex items-center gap-2.5">
+          <button
+            type="button"
+            onClick={onToggleSidebar}
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700 lg:hidden"
+            aria-label="Open menu"
+          >
+            <svg viewBox="0 0 20 20" fill="none" className="h-5 w-5">
+              <path
+                d="M3 5h14M3 10h14M3 15h14"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+              />
+            </svg>
+          </button>
 
-            <span className="rounded-full bg-[#EFF6FF] px-2 py-0.5 text-[10px] font-medium text-[#2563EB]">
-              Knowledge Base
-            </span>
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="text-sm font-semibold tracking-[-0.01em] text-[#0F172A]">
+                Documents
+              </h2>
+
+              <span className="rounded-full bg-[#EFF6FF] px-2 py-0.5 text-[10px] font-medium text-[#2563EB]">
+                Knowledge Base
+              </span>
+            </div>
+
+            <p className="mt-1 text-xs text-[#64748B]">
+              Manage your real estate knowledge sources
+            </p>
           </div>
-
-          <p className="mt-1 text-xs text-[#64748B]">
-            Manage your real estate knowledge sources
-          </p>
         </div>
 
         <div>
@@ -319,7 +337,7 @@ export default function Documents() {
             onClick={() =>
               fileInputRef.current?.click()
             }
-            className="group flex items-center gap-2 rounded-lg bg-[#2563EB] px-4 py-2.5 text-xs font-medium text-white shadow-sm transition-all duration-200 hover:bg-[#1D4ED8] hover:shadow-md active:scale-[0.98]"
+            className="group flex w-full items-center justify-center gap-2 rounded-lg bg-[#2563EB] px-4 py-2.5 text-xs font-medium text-white shadow-sm transition-all duration-200 hover:bg-[#1D4ED8] hover:shadow-md active:scale-[0.98] sm:w-auto"
           >
             <svg
               viewBox="0 0 20 20"
@@ -340,16 +358,16 @@ export default function Documents() {
         </div>
       </header>
 
-      <div className="flex-1 overflow-y-auto p-6">
+      <div className="flex-1 overflow-y-auto p-4 sm:p-6">
         <div className="mx-auto max-w-6xl">
-          <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <div className="group rounded-2xl border border-[#E2E8F0] bg-white p-5 shadow-[0_1px_2px_rgba(15,23,42,0.02)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
+          <div className="mb-6 grid grid-cols-3 gap-3 sm:gap-4">
+            <div className="group rounded-2xl border border-[#E2E8F0] bg-white p-3 shadow-[0_1px_2px_rgba(15,23,42,0.02)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md sm:p-5">
               <div className="flex items-center justify-between">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#64748B]">
+                <p className="hidden text-[10px] font-semibold uppercase tracking-[0.14em] text-[#64748B] sm:block">
                   Total Documents
                 </p>
 
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#F8FAFC] text-[#64748B] transition-colors group-hover:bg-[#EFF6FF] group-hover:text-[#2563EB]">
+                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#F8FAFC] text-[#64748B] transition-colors group-hover:bg-[#EFF6FF] group-hover:text-[#2563EB] sm:h-8 sm:w-8">
                   <svg
                     viewBox="0 0 20 20"
                     fill="none"
@@ -371,7 +389,7 @@ export default function Documents() {
                 </div>
               </div>
 
-              <p className="mt-3 text-2xl font-semibold tracking-tight text-[#0F172A]">
+              <p className="mt-2 text-xl font-semibold tracking-tight text-[#0F172A] sm:mt-3 sm:text-2xl">
                 {uniqueDocuments.length}
               </p>
 
@@ -380,18 +398,18 @@ export default function Documents() {
               </p>
             </div>
 
-            <div className="group rounded-2xl border border-[#E2E8F0] bg-white p-5 shadow-[0_1px_2px_rgba(15,23,42,0.02)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
+            <div className="group rounded-2xl border border-[#E2E8F0] bg-white p-3 shadow-[0_1px_2px_rgba(15,23,42,0.02)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md sm:p-5">
               <div className="flex items-center justify-between">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#64748B]">
+                <p className="hidden text-[10px] font-semibold uppercase tracking-[0.14em] text-[#64748B] sm:block">
                   Ready
                 </p>
 
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#EFF6FF] text-[#2563EB]">
+                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#EFF6FF] text-[#2563EB] sm:h-8 sm:w-8">
                   <span className="h-2 w-2 rounded-full bg-[#2563EB]" />
                 </div>
               </div>
 
-              <p className="mt-3 text-2xl font-semibold tracking-tight text-[#0F172A]">
+              <p className="mt-2 text-xl font-semibold tracking-tight text-[#0F172A] sm:mt-3 sm:text-2xl">
                 {readyCount}
               </p>
 
@@ -400,13 +418,13 @@ export default function Documents() {
               </p>
             </div>
 
-            <div className="group rounded-2xl border border-[#E2E8F0] bg-white p-5 shadow-[0_1px_2px_rgba(15,23,42,0.02)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md">
+            <div className="group rounded-2xl border border-[#E2E8F0] bg-white p-3 shadow-[0_1px_2px_rgba(15,23,42,0.02)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md sm:p-5">
               <div className="flex items-center justify-between">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#64748B]">
+                <p className="hidden text-[10px] font-semibold uppercase tracking-[0.14em] text-[#64748B] sm:block">
                   Processing
                 </p>
 
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#F8FAFC] text-[#64748B]">
+                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#F8FAFC] text-[#64748B] sm:h-8 sm:w-8">
                   <svg
                     viewBox="0 0 20 20"
                     fill="none"
@@ -429,7 +447,7 @@ export default function Documents() {
                 </div>
               </div>
 
-              <p className="mt-3 text-2xl font-semibold tracking-tight text-[#0F172A]">
+              <p className="mt-2 text-xl font-semibold tracking-tight text-[#0F172A] sm:mt-3 sm:text-2xl">
                 {processingCount}
               </p>
 
@@ -503,13 +521,13 @@ export default function Documents() {
                 {[1, 2, 3].map((item) => (
                   <div
                     key={item}
-                    className="flex items-center gap-4 border-b border-[#E2E8F0] px-5 py-5 last:border-0"
+                    className="flex items-center gap-4 border-b border-[#E2E8F0] px-4 py-4 last:border-0 sm:px-5 sm:py-5"
                   >
-                    <div className="h-9 w-9 animate-pulse rounded-lg bg-[#E2E8F0]" />
+                    <div className="h-8 w-8 animate-pulse rounded-lg bg-[#E2E8F0] sm:h-9 sm:w-9" />
 
                     <div className="flex-1 space-y-2">
-                      <div className="h-3 w-48 animate-pulse rounded bg-[#E2E8F0]" />
-                      <div className="h-2.5 w-28 animate-pulse rounded bg-[#F1F5F9]" />
+                      <div className="h-3 w-32 animate-pulse rounded bg-[#E2E8F0] sm:w-48" />
+                      <div className="h-2.5 w-20 animate-pulse rounded bg-[#F1F5F9] sm:w-28" />
                     </div>
 
                     <div className="hidden h-3 w-12 animate-pulse rounded bg-[#F1F5F9] md:block" />
@@ -518,7 +536,7 @@ export default function Documents() {
                 ))}
               </div>
             ) : filteredDocuments.length === 0 ? (
-              <div className="px-6 py-16 text-center">
+              <div className="px-6 py-12 text-center sm:py-16">
                 <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-[#F8FAFC] text-[#94A3B8]">
                   <svg
                     viewBox="0 0 20 20"
@@ -567,9 +585,10 @@ export default function Documents() {
               filteredDocuments.map((document) => (
                 <div
                   key={document.id}
-                  className="group border-b border-[#E2E8F0] px-5 py-4 transition-colors duration-200 last:border-0 hover:bg-[#FAFCFF]"
+                  className="group border-b border-[#E2E8F0] px-4 py-4 transition-colors duration-200 last:border-0 hover:bg-[#FAFCFF] sm:px-5"
                 >
-                  <div className="grid items-center gap-4 md:grid-cols-[minmax(0,1fr)_90px_130px_110px_130px]">
+                  {/* Desktop: table-like grid */}
+                  <div className="hidden items-center gap-4 md:grid md:grid-cols-[minmax(0,1fr)_90px_130px_110px_130px]">
                     <div className="flex min-w-0 items-center gap-3">
                       <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[#DBEAFE] bg-[#EFF6FF] text-[9px] font-bold tracking-wide text-[#2563EB]">
                         {document.type}
@@ -579,18 +598,14 @@ export default function Documents() {
                         <p className="truncate text-sm font-medium text-[#0F172A]">
                           {document.name}
                         </p>
-
-                        <p className="mt-1 text-[10px] text-[#94A3B8] md:hidden">
-                          {document.date}
-                        </p>
                       </div>
                     </div>
 
-                    <p className="hidden text-xs font-medium text-[#64748B] md:block">
+                    <p className="text-xs font-medium text-[#64748B]">
                       {document.type}
                     </p>
 
-                    <p className="hidden text-xs text-[#64748B] md:block">
+                    <p className="text-xs text-[#64748B]">
                       {document.date}
                     </p>
 
@@ -650,12 +665,94 @@ export default function Documents() {
                       </button>
                     </div>
                   </div>
+
+                  {/* Mobile: card layout */}
+                  <div className="md:hidden">
+                    <div className="flex items-start gap-3">
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[#DBEAFE] bg-[#EFF6FF] text-[9px] font-bold tracking-wide text-[#2563EB]">
+                        {document.type}
+                      </div>
+
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium text-[#0F172A]">
+                          {document.name}
+                        </p>
+
+                        <div className="mt-1.5 flex items-center gap-2">
+                          <p className="text-[10px] text-[#94A3B8]">
+                            {document.type}
+                          </p>
+
+                          <span className="h-1 w-1 rounded-full bg-[#CBD5E1]" />
+
+                          <p className="text-[10px] text-[#94A3B8]">
+                            {document.date}
+                          </p>
+                        </div>
+
+                        <div className="mt-2.5 flex items-center gap-3">
+                          <span
+                            className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                              document.status === "Ready"
+                                ? "bg-[#EFF6FF] text-[#2563EB]"
+                                : document.status === "Failed"
+                                ? "bg-red-50 text-red-600"
+                                : "bg-[#F1F5F9] text-[#64748B]"
+                            }`}
+                          >
+                            <span
+                              className={`h-1.5 w-1.5 rounded-full ${
+                                document.status === "Ready"
+                                  ? "bg-[#2563EB]"
+                                  : document.status === "Failed"
+                                  ? "bg-red-500"
+                                  : "animate-pulse bg-[#94A3B8]"
+                              }`}
+                            />
+
+                            {document.status}
+                          </span>
+
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                viewDocument(document)
+                              }
+                              disabled={
+                                document.status !== "Ready"
+                              }
+                              className="rounded-md px-2 py-1 text-xs font-medium text-[#2563EB] transition-colors duration-200 hover:bg-[#EFF6FF] disabled:cursor-not-allowed disabled:text-[#CBD5E1]"
+                            >
+                              View
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() =>
+                                deleteDocument(document.id)
+                              }
+                              disabled={
+                                deletingDocumentId !== null
+                              }
+                              className="rounded-md px-2 py-1 text-xs font-medium text-[#94A3B8] transition-colors duration-200 hover:bg-red-50 hover:text-red-500 disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                              {deletingDocumentId ===
+                              document.id
+                                ? "Deleting..."
+                                : "Delete"}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               ))
             )}
           </div>
 
-          <div className="mt-5 flex flex-col items-center justify-between gap-4 rounded-2xl border border-dashed border-[#CBD5E1] bg-white px-6 py-6 sm:flex-row">
+          <div className="mt-5 flex flex-col gap-4 rounded-2xl border border-dashed border-[#CBD5E1] bg-white px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-6">
             <div>
               <p className="text-sm font-medium text-[#0F172A]">
                 Add knowledge to AVENIQ
@@ -690,9 +787,9 @@ export default function Documents() {
               event.stopPropagation()
             }
           >
-            <div className="flex items-center justify-between border-b border-[#E2E8F0] px-5 py-4">
+            <div className="flex items-center justify-between border-b border-[#E2E8F0] px-4 py-3 sm:px-5 sm:py-4">
               <div className="flex min-w-0 items-center gap-3">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[#DBEAFE] bg-[#EFF6FF] text-[9px] font-bold text-[#2563EB]">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[#DBEAFE] bg-[#EFF6FF] text-[9px] font-bold text-[#2563EB] sm:h-9 sm:w-9">
                   {selectedDocument.type}
                 </div>
 
@@ -731,9 +828,9 @@ export default function Documents() {
               </button>
             </div>
 
-            <div className="overflow-y-auto px-5 py-5">
-              <div className="mb-5 flex items-center justify-between rounded-xl border border-[#DBEAFE] bg-[#F8FBFF] px-4 py-3">
-                <div>
+            <div className="overflow-y-auto px-4 py-4 sm:px-5 sm:py-5">
+              <div className="mb-5 flex items-center justify-between gap-3 rounded-xl border border-[#DBEAFE] bg-[#F8FBFF] px-3 py-3 sm:px-4 sm:py-3">
+                <div className="min-w-0">
                   <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#64748B]">
                     Knowledge Status
                   </p>
@@ -743,7 +840,7 @@ export default function Documents() {
                   </p>
                 </div>
 
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-[#EFF6FF] px-2.5 py-1 text-[10px] font-medium text-[#2563EB]">
+                <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-[#EFF6FF] px-2.5 py-1 text-[10px] font-medium text-[#2563EB]">
                   <span className="h-1.5 w-1.5 rounded-full bg-[#2563EB]" />
                   Ready
                 </span>
@@ -761,8 +858,8 @@ export default function Documents() {
                     </span>
                   </div>
 
-                  <div className="max-h-[55vh] overflow-y-auto rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-4">
-                    <p className="whitespace-pre-wrap text-xs leading-6 text-[#475569]">
+                  <div className="max-h-[55vh] overflow-y-auto rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-3.5 sm:p-4">
+                    <p className="whitespace-pre-wrap break-words text-xs leading-6 text-[#475569]">
                       {selectedDocument.text}
                     </p>
                   </div>
@@ -780,7 +877,7 @@ export default function Documents() {
               )}
             </div>
 
-            <div className="flex justify-end border-t border-[#E2E8F0] px-5 py-4">
+            <div className="flex justify-end border-t border-[#E2E8F0] px-4 py-3 sm:px-5 sm:py-4">
               <button
                 type="button"
                 onClick={() =>

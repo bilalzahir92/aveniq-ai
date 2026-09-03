@@ -16,6 +16,12 @@ export const metadata = {
   description: "AI-powered document knowledge assistant for real estate professionals.",
 };
 
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+};
+
 export default function RootLayout({ children }) {
   return (
     <html
